@@ -15,11 +15,23 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
+        
+        // Define a custom airplane icon
+        var airplaneIcon = L.icon({
+            iconUrl: 'file:///D:/Development/AsterixProject/assets/aircraft.png',  // Corrected path to airplane image
+            iconSize: [32, 32],       // Size of the icon (width, height)
+            iconAnchor: [16, 16],     // Point of the icon that will correspond to the marker's location
+            popupAnchor: [0, -16]     // Point from which the popup should open relative to the iconAnchor
+        });
 
-        // Function to add an aircraft marker
+        // Function to add an aircraft marker with the airplane icon
         function addAircraft(lat, lon) {
-            L.marker([lat, lon]).addTo(map).bindPopup("Aircraft Position: " + lat + ", " + lon);
+            L.marker([lat, lon], { icon: airplaneIcon }).addTo(map)
+                .bindPopup("Aircraft Position: " + lat + ", " + lon);
         }
+
+        // Example: Adding an aircraft marker at a specific location
+        addAircraft(41.3874, 2.1686);  // Aircraft at Barcelona
     </script>
 </body>
 </html>
