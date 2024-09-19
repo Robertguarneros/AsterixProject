@@ -1,7 +1,7 @@
 # AsterixProject
 
 ## First time installing Project
-1. `git clone https://github.com/Robertguarneros/AsterixProject.git`
+1. Clone repo: `git clone https://github.com/Robertguarneros/AsterixProject.git`
 2. Change into the project directory 
 3. Install the dependencies: `pip install -r requirements.txt`
 4. Run proyect
