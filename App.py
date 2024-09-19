@@ -55,13 +55,13 @@ class MainWindow(QMainWindow):
 
     def add_aircraft_example(self):
         """Adds an example aircraft at a specific position."""
-        latitude = 51.505
-        longitude = -0.09
+        latitude = 41.3874 
+        longitude = 2.1686
         self.web_view.page().runJavaScript(f"addAircraft({latitude}, {longitude});")
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     main_window = MainWindow()
-    main_window.show()
+    main_window.showMaximized()
     sys.exit(app.exec_())
