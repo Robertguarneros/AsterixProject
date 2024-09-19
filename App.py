@@ -6,7 +6,7 @@ import sys
 from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWebEngineWidgets import QWebEngineView
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget)
+from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
 
 
 class MainWindow(QMainWindow):
@@ -25,7 +25,6 @@ class MainWindow(QMainWindow):
 
         # This allows us to set the icon for all the title bars and popups
         icon_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
-
         self.setWindowIcon(QIcon(icon_path))
 
         # Create main menu
@@ -42,10 +41,23 @@ class MainWindow(QMainWindow):
 
         # Add map
         self.web_view = QWebEngineView()
-        self.web_view.setUrl(QUrl("https://www.openstreetmap.org"))
+
+        # Load the custom Leaflet map HTML file
+        html_path = os.path.join(os.path.dirname(__file__), "map.html")
+        self.web_view.setUrl(QUrl.fromLocalFile(os.path.abspath(html_path)))
+
         # Create a layout for the central widget
         layout = QVBoxLayout(central_widget)
         layout.addWidget(self.web_view)
+
+        # Example: Add an aircraft after loading
+        self.web_view.loadFinished.connect(self.add_aircraft_example)
+
+    def add_aircraft_example(self):
+        """Adds an example aircraft at a specific position."""
+        latitude = 51.505
+        longitude = -0.09
+        self.web_view.page().runJavaScript(f"addAircraft({latitude}, {longitude});")
 
 
 if __name__ == "__main__":
