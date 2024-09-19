@@ -1,4 +1,11 @@
 # AsterixProject
+
+## First time installing Project
+`git clone https://github.com/Robertguarneros/AsterixProject.git`
+Change into the project directory 
+Install the dependencies: `pip install -r requirements.txt`
+Run proyect
+
 ## Project Structure
 
 The source code of the project is organized as follows:
@@ -25,9 +32,3 @@ The requirements can be installed from the requirements.txt file:
 
 ### Verify Requirements
 `pip list`
-
-## Use Project
-`git clone https://github.com/Robertguarneros/AsterixProject.git`
-Change into the project directory 
-Install the dependencies: `pip install -r requirements.txt`
-Run proyect
