@@ -8,7 +8,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
 
-
+# Tocado por David
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -55,7 +55,7 @@ class MainWindow(QMainWindow):
 
     def add_aircraft_example(self):
         """Adds an example aircraft at a specific position."""
-        latitude = 41.3874
+        latitude = 41.3874 
         longitude = 2.1686
         self.web_view.page().runJavaScript(f"addAircraft({latitude}, {longitude});")
 
