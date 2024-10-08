@@ -151,6 +151,79 @@ def get_data_item_I048_042(bytes):
     return x_nm, y_nm
 
 
+def get_data_item_I048_250(bytes):
+    # Remove spaces from input
+    bytes = bytes.replace(" ", "")
+
+    REPField = bytes[:8]
+    REPField = int(REPField, 2)
+    print("REP="+str(REPField))
+
+    BDSItems = []
+    for i in range(REPField):
+        BDSItems.append(bytes[8+64*i:8+64*(i+1)])
+
+    ModesPresent = []
+     # Initialize results dictionary
+    resultBDS4 = {}
+    resultBDS5 = {}
+    resultBDS6 = {}
+    for item in BDSItems:
+        BDS1 = int(item[56:60],2)
+        BDS2 = int(item[60:64],2)
+        BDSTotal = str(BDS1)+","+str(BDS2)
+        ModesPresent.append("BDS:"+str(BDSTotal))
+        
+        if BDS1 == 1:
+            continue
+        elif BDS1 == 2:
+            continue
+        elif BDS1 == 3:
+            continue
+        elif BDSTotal == "4,0":
+            resultBDS4["MCP_STATUS"]=item[0:1]
+            resultBDS4["MCP/FCU Selected Altitude"]=int(item[1:13],2)*16
+            resultBDS4["FMS_STATUS"]=item[13:14]
+            resultBDS4["FMS Selected Altitude"]=int(item[14:26],2)*16
+            resultBDS4["BP_STATUS"]=item[26:27]
+            resultBDS4["Barometric Pressure Setting"]=int(item[27:39],2)*0.1 + 800
+            resultBDS4["STATUS OF MCP/FCU MODE BITS"]=item[47:48]
+            if item[49:50]=="0": 
+                resultBDS4["VNAV Mode"] = "Not Active" 
+            elif item[49:50]=="1": 
+                resultBDS4["VNAV Mode"]= "Active"
+            if item[50:51]=="0": 
+                resultBDS4["ALT HOLD Mode"] = "Not Active" 
+            elif item[50:51]=="1": 
+                resultBDS4["ALT HOLD Mode"]= "Active" 
+            if item[51:52]=="0": 
+                resultBDS4["APPROACH Mode"] = "Not Active" 
+            elif item[51:52]=="1": 
+                resultBDS4["APPROACH Mode"]= "Active"
+            if item[54:55]=="0": 
+                resultBDS4["STATUS OF TARGET ALT SOURCE BITS"] = "No source information provided" 
+            elif item[51:52]=="1": 
+                resultBDS4["STATUS OF TARGET ALT SOURCE BITS"]= "Source information deliberately provided"
+            if item[54:56]=="00":
+                resultBDS4["TARGET ALT SOURCE"]="Unknown"
+            elif item[54:56]=="01":
+                resultBDS4["TARGET ALT SOURCE"]="Aircraft Altitude"
+            elif item[54:56]=="10":
+                resultBDS4["TARGET ALT SOURCE"]="FCU/MCP Selected Altitude"
+            elif item[54:56]=="11":
+                resultBDS4["TARGET ALT SOURCE"]="FMS Selected Altitude"
+        elif BDSTotal == "5,0":
+            
+
+
+
+    print("ModesPresent="+str(ModesPresent))
+    print("BDS4="+str(resultBDS4))
+    print("BDS5="+str(resultBDS5))
+    print("BDS6="+str(resultBDS6))
+
+    return ModesPresent, resultBDS4, resultBDS5, resultBDS6
+
 bytes130 = "11111110 00011000 00000100 11001001 00000111 00101010 00001010 00000100"
 decoded_values = get_data_item_I048_130(bytes130)
 for field, value in decoded_values.items():
@@ -169,3 +242,6 @@ bytes042 = "10000000 00000000 11111111 11111111"
 x, y = get_data_item_I048_042(bytes042)
 print(f"X: {x} NM, Y: {y} NM")
 
+#bytes250 = "00000001 00010000 10011110 00000100 10000000 11100000 00110011 11001011 00010000"
+bytes250 ="00000010 10100101 00100110 01010001 11110000 10101000 00000000 00000000 01000000 10000000 00011010 10000011 00100111 10100011 01101100 01101100 01100000"
+get_data_item_I048_250(bytes250)
