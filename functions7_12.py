@@ -1,3 +1,79 @@
+def get_data_item_I048_130(bytes):
+    byte_string = bytes.replace(" ", "")
+    if len(byte_string) < 8:
+        raise ValueError("Input must be at least 1 byte long")
+    
+    # Get the primary subfield (first octet)
+    primary_subfield = byte_string[:8]
+    
+    # Check which subfields are present
+    subfields = {
+        "SRL": primary_subfield[0] == '1',  # Subfield #1 SSR Plot Runlength
+        "SRR": primary_subfield[1] == '1',  # Subfield #2 Number of received replies for MSSR
+        "SAM": primary_subfield[2] == '1',  # Subfield #3 Amplitude of MSSR reply
+        "PRL": primary_subfield[3] == '1',  # Subfield #4 PSR Plot Runlength
+        "PAM": primary_subfield[4] == '1',  # Subfield #5 Amplitude of PSR Plot
+        "RPD": primary_subfield[5] == '1',  # Subfield #6 Difference in range (PSR-SSR)
+        "APD": primary_subfield[6] == '1',  # Subfield #7 Difference in azimuth (PSR-SSR)
+        "FX": primary_subfield[7] == '1',   # Extension into next octet
+    }
+    
+    # Initialize results dictionary
+    result = {}
+
+    # Extract subfield values based on their presence
+    bit_offset = 8  # Start after the first octet (primary subfield)
+
+    # Subfield #1 (SSR Plot Runlength)
+    if subfields["SRL"]:
+        srl_bits = byte_string[bit_offset:bit_offset + 8]
+        srl_value = int(srl_bits, 2) * (360 / 2**13)
+        result["SSR Plot Runlength (degrees)"] = srl_value
+        bit_offset += 8
+    
+    # Subfield #2 (Number of received replies for MSSR)
+    if subfields["SRR"]:
+        srr_bits = byte_string[bit_offset:bit_offset + 8]
+        srr_value = int(srr_bits, 2)  # LSB = 1
+        result["Number of received replies for MSSR"] = srr_value
+        bit_offset += 8
+    
+    # Subfield #3 (Amplitude of MSSR Reply)
+    if subfields["SAM"]:
+        sam_bits = byte_string[bit_offset:bit_offset + 8]
+        sam_value = int(sam_bits, 2) if sam_bits[0] == '0' else int(sam_bits, 2) - (1 << 8)
+        result["Amplitude of MSSR Reply (dBm)"] = sam_value
+        bit_offset += 8
+    
+    # Subfield #4 (Primary Plot Runlength)
+    if subfields["PRL"]:
+        prl_bits = byte_string[bit_offset:bit_offset + 8]
+        prl_value = int(prl_bits, 2) * (360 / 2**13)
+        result["Primary Plot Runlength (degrees)"] = prl_value
+        bit_offset += 8
+    
+    # Subfield #5 (Amplitude of Primary Plot)
+    if subfields["PAM"]:
+        pam_bits = byte_string[bit_offset:bit_offset + 8]
+        pam_value = int(pam_bits, 2) if pam_bits[0] == '0' else int(pam_bits, 2) - (1 << 8)
+        result["Amplitude of Primary Plot (dBm)"] = pam_value
+        bit_offset += 8
+    
+    # Subfield #6 (Difference in Range between PSR and SSR plot)
+    if subfields["RPD"]:
+        rpd_bits = byte_string[bit_offset:bit_offset + 8]
+        rpd_value = int(rpd_bits, 2) if rpd_bits[0] == '0' else int(rpd_bits, 2) - (1 << 8)
+        result["Difference in Range (PSR-SSR) (NM)"] = rpd_value / 256
+        bit_offset += 8
+    
+    # Subfield #7 (Difference in Azimuth between PSR and SSR plot)
+    if subfields["APD"]:
+        apd_bits = byte_string[bit_offset:bit_offset + 8]
+        apd_value = int(apd_bits, 2) if apd_bits[0] == '0' else int(apd_bits, 2) - (1 << 8)
+        result["Difference in Azimuth (PSR-SSR) (degrees)"] = apd_value * (360 / 2**14)
+        bit_offset += 8
+    
+    return result
 
 def get_data_item_I048_220(bytes):
     # Data Item I048/220
@@ -74,6 +150,12 @@ def get_data_item_I048_042(bytes):
     
     return x_nm, y_nm
 
+
+bytes130 = "11111110 00011000 00000100 11001001 00000111 00101010 00001010 00000100"
+decoded_values = get_data_item_I048_130(bytes130)
+for field, value in decoded_values.items():
+    print(f"{field}: {value}")
+
 bytes220 = "01001010 00001000 11101011"
 get_data_item_I048_220(bytes220)
 
@@ -83,6 +165,7 @@ get_data_item_I048_240(bytes240)
 bytes161 = "00000111 10000011"
 get_data_item_I048_161(bytes161)
 
-bytes_input = "10000000 00000000 11111111 11111111"
-x, y = get_data_item_I048_042(bytes_input)
+bytes042 = "10000000 00000000 11111111 11111111"
+x, y = get_data_item_I048_042(bytes042)
 print(f"X: {x} NM, Y: {y} NM")
+
