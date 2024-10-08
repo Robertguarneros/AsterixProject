@@ -181,25 +181,25 @@ def get_data_item_I048_250(bytes):
         elif BDS1 == 3:
             continue
         elif BDSTotal == "4,0":
-            resultBDS4["MCP_STATUS"]=item[0:1]
-            resultBDS4["MCP/FCU Selected Altitude"]=int(item[1:13],2)*16
-            resultBDS4["FMS_STATUS"]=item[13:14]
-            resultBDS4["FMS Selected Altitude"]=int(item[14:26],2)*16
-            resultBDS4["BP_STATUS"]=item[26:27]
-            resultBDS4["Barometric Pressure Setting"]=int(item[27:39],2)*0.1 + 800
+            resultBDS4["MCP STATUS"]=item[0:1]
+            resultBDS4["MCP/FCU SELECTED ALTITUDE"]=int(item[1:13],2)*16
+            resultBDS4["FMS STATUS"]=item[13:14]
+            resultBDS4["FMS SELECTED ALTITUDE"]=int(item[14:26],2)*16
+            resultBDS4["BP STATUS"]=item[26:27]
+            resultBDS4["BAROMETRIC PRESSURE SETTING"]=int(item[27:39],2)*0.1 + 800
             resultBDS4["STATUS OF MCP/FCU MODE BITS"]=item[47:48]
             if item[49:50]=="0": 
-                resultBDS4["VNAV Mode"] = "Not Active" 
+                resultBDS4["VNAV MODE"] = "Not Active" 
             elif item[49:50]=="1": 
-                resultBDS4["VNAV Mode"]= "Active"
+                resultBDS4["VNAV MODE"]= "Active"
             if item[50:51]=="0": 
-                resultBDS4["ALT HOLD Mode"] = "Not Active" 
+                resultBDS4["ALT HOLD MODE"] = "Not Active" 
             elif item[50:51]=="1": 
-                resultBDS4["ALT HOLD Mode"]= "Active" 
+                resultBDS4["ALT HOLD MODE"]= "Active" 
             if item[51:52]=="0": 
-                resultBDS4["APPROACH Mode"] = "Not Active" 
+                resultBDS4["APPROACH MODE"] = "Not Active" 
             elif item[51:52]=="1": 
-                resultBDS4["APPROACH Mode"]= "Active"
+                resultBDS4["APPROACH MODE"]= "Active"
             if item[54:55]=="0": 
                 resultBDS4["STATUS OF TARGET ALT SOURCE BITS"] = "No source information provided" 
             elif item[51:52]=="1": 
@@ -213,9 +213,97 @@ def get_data_item_I048_250(bytes):
             elif item[54:56]=="11":
                 resultBDS4["TARGET ALT SOURCE"]="FMS Selected Altitude"
         elif BDSTotal == "5,0":
+            # Decode BDS 5.0 (Roll Angle and related parameters)
+            resultBDS5["RA STATUS"] = item[0:1]
             
+            # Handle Roll Angle (10 bits) and decode it using two's complement
+            roll_angle_bits = item[1:11]
+            roll_angle = int(roll_angle_bits, 2)
+            
+            if roll_angle >= 2**9:  # Check if the value is negative in two's complement
+                roll_angle -= 2**10  # Convert to negative
 
+            # Apply the LSB scale (45/256 degrees per bit)
+            resultBDS5["Roll Angle"] = roll_angle * (45 / 256)
+            resultBDS5["TTA STATUS"] = item[11:12]
+            # True Track Angle
+            true_track_angle_bits = item[12:23]
+            true_track_angle = int(true_track_angle_bits, 2)
 
+            # Two's complement conversion for 11-bit signed value
+            if true_track_angle >= 2**10:
+                true_track_angle -= 2**11  # Convert to signed
+
+            resultBDS5["True Track Angle"] = true_track_angle * (90 / 512)  # LSB = 90/512 degrees
+
+            resultBDS5["GS STATUS"] = item[23:24]
+
+            # Ground Speed
+            ground_speed_bits = item[25:34]
+            ground_speed = int(ground_speed_bits, 2)
+            resultBDS5["Ground Speed"] = ground_speed * (1024 / 512)  # LSB = 1024/512 knots
+
+            resultBDS5["TAR STATUS"] = item[34:35]
+            # Track Angle Rate
+            track_angle_rate_bits = item[35:45]
+            track_angle_rate = int(track_angle_rate_bits, 2)
+
+            # Two's complement conversion for Track Angle Rate 
+            if track_angle_rate >= 2**9:
+                track_angle_rate -= 2**10  # Convert to signed
+
+            resultBDS5["Track Angle Rate"] = track_angle_rate * (8 / 256)  # LSB = 8/256 degrees per second
+
+            resultBDS5["TAS STATUS"] = item[45:46]
+            # True Airspeed
+            true_airspeed_bits = item[47:56]
+            true_airspeed = int(true_airspeed_bits, 2)
+            resultBDS5["True Airspeed"] = true_airspeed * 2  # LSB = 2 knots
+        elif BDSTotal == "6,0":
+        # Decode BDS 6.0 (Magnetic Heading and related parameters)
+            resultBDS6["MH STATUS"] = item[0:1]
+            
+            # Magnetic Heading
+            magnetic_heading_bits = item[1:12]
+            magnetic_heading = int(magnetic_heading_bits, 2)
+            
+            if magnetic_heading >= 2**10:  # Check if the value is negative in two's complement
+                magnetic_heading -= 2**11  # Convert to negative
+
+            # Apply the scale
+            resultBDS6["MAGNETIC HEADING"] = magnetic_heading * (90 / 512)
+            resultBDS6["IAS STATUS"] = item[12:13]
+
+            # Indicated Airspeed
+            indicated_airspeed_bits = item[13:23]
+            indicated_airspeed = int(indicated_airspeed_bits, 2)
+
+            resultBDS6["Indicated Airspeed"] = indicated_airspeed
+
+            resultBDS6["MACH STATUS"] = item[23:24]
+
+            # Mach Number
+            mach_number_bits = item[24:34]
+            mach_number = int(mach_number_bits, 2)
+            resultBDS6["Mach Number"] = mach_number * (2.048/512)
+
+            resultBDS6["BAR STATUS"] = item[34:35]
+
+            # Barometric Altitude Rate
+            barometric_altitude_rate_bits = item[35:45]
+            barometric_altitude_rate = int(barometric_altitude_rate_bits, 2)
+            if barometric_altitude_rate >= 2**9:  # Check if the value is negative in two's complement
+                barometric_altitude_rate -= 2**10  # Convert to negative
+            resultBDS6["Barometric Altitude Rate"] = barometric_altitude_rate * (8192 / 256)
+
+            resultBDS6["IVV STATUS"] = item[45:46]
+
+            # Inertial Vertical Speed
+            inertial_vertical_speed_bits = item[46:56]
+            inertial_vertical_speed = int(inertial_vertical_speed_bits, 2)
+            if inertial_vertical_speed >= 2**9:  # Check if the value is negative in two's complement
+                inertial_vertical_speed -= 2**10  # Convert to negative
+            resultBDS6["Inertial Vertical Speed"] = inertial_vertical_speed * (8192 / 256)
 
     print("ModesPresent="+str(ModesPresent))
     print("BDS4="+str(resultBDS4))
@@ -244,4 +332,5 @@ print(f"X: {x} NM, Y: {y} NM")
 
 #bytes250 = "00000001 00010000 10011110 00000100 10000000 11100000 00110011 11001011 00010000"
 bytes250 ="00000010 10100101 00100110 01010001 11110000 10101000 00000000 00000000 01000000 10000000 00011010 10000011 00100111 10100011 01101100 01101100 01100000"
+#bytes250="00000011 11001000 01001110 01000010 01110000 10101000 00000000 00000000 01000000 10000000 00011011 10010111 00110011 00100000 00000100 11010110 01010000 11011111 01001001 11100111 00101111 00100000 00010100 00000001 01100000"
 get_data_item_I048_250(bytes250)
