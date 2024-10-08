@@ -43,8 +43,23 @@ def get_data_item_I048_240(bytes_str):
     return ascii_result
     
 
+def get_data_item_I048_161(bytes):
+    # Data Item I048/161
+    bytes = bytes.replace(" ", "")
+
+    # Convert binary string to an integer using base 2
+    integer_value = int(bytes, 2)
+
+    print("Track Number="+str(integer_value))
+
+    return integer_value
+
+
 bytes220 = "01001010 00001000 11101011"
 get_data_item_I048_220(bytes220)
 
 bytes240 = "01001000 11110101 00110100 11000111 01011000 00100000"
 get_data_item_I048_240(bytes240)
+
+bytes161 = "00000111 10000011"
+get_data_item_I048_161(bytes161)
