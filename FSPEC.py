@@ -44,4 +44,6 @@ def FSPEC(line):
 
     return DataItems
 
-FSPEC("output_file.txt")
+with open("output_file.txt", "r") as file:
+    line = file.readline()  
+    FSPEC(line) 
