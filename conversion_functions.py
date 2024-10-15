@@ -273,6 +273,26 @@ def get_mode3a_code(message):
     # Retornamos los valores de los bits de control y el código octal
     return V, G, L, mode_3a_code
 
+# Decode 090
+def get_flight_level(message):
+
+    # Dividimos el mensaje en dos octetos
+    first_octet_bin = message.split()[0]  # Primer octeto en binario
+    second_octet_bin = message.split()[1]  # Segundo octeto en binario
+
+    # Extraemos los bits de control directamente
+    V = 'Code not validated' if first_octet_bin[0] == '1' else 'Code Validated'  # Bit 16: Validación (V)
+    G = 'Garbled code' if first_octet_bin[1] == '1' else 'Default'  # Bit 15: Código Garbled (G)
+
+    # Extraemos el nivel de vuelo (bits 14 a 1) como un solo bloque
+    flight_level_bin = first_octet_bin[2:] + second_octet_bin  # De bits 14 a 1
+
+    # Convertimos el nivel de vuelo a decimal
+    flight_level = int(flight_level_bin, 2) * 0.25  # LSB=1/4 FL
+
+    # Retornamos los valores de los bits de control y el nivel de vuelo
+    return V, G, flight_level
+
 def convert_to_csv(input_file):
     lines = read_and_split_binary(input_file)
     csv_lines = []
@@ -309,6 +329,7 @@ def convert_to_csv(input_file):
             TYP = SIM = RDP = SPI = RAB = TST = ERR = XPP = ME = MI = FOE_FRI = "N/A"
             new_csv_line = new_csv_line +";"+ str(TYP)+";"+str(SIM)+";"+str(RDP)+";"+str(SPI)+";"+str(RAB)+";"+str(TST)+";"+str(ERR)+";"+str(XPP)+";"+str(ME)+";"+str(MI)+";"+str(FOE_FRI)
         if fspec[3] == True:
+            # Data Item 040 Measured Position in Slant Polar Coordinates
             message = remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)
             rho, theta = get_measured_position_in_slant_coordinates(message)
             new_csv_line = new_csv_line = new_csv_line +";"+ str(rho)+";"+str(theta)
@@ -316,9 +337,22 @@ def convert_to_csv(input_file):
             rho = theta = "N/A"
             new_csv_line = new_csv_line = new_csv_line +";"+ str(rho)+";"+str(theta)
         if fspec[4] == True:
+            # Data Item 070 Mode 3A Code in Octal Representation
             message = remaining_line.pop(0)+" "+remaining_line.pop(0)
             V, G, L, mode_3a_code = get_mode3a_code(message)
             new_csv_line = new_csv_line = new_csv_line +";"+ str(V)+";"+str(G)+";"+str(mode_3a_code)
+        elif fspec[4] == False:
+            V = G = L = mode_3a_code = "N/A"
+            new_csv_line = new_csv_line +";"+ str(V)+";"+str(G)+";"+str(mode_3a_code)
+        if fspec[5] == True:
+            # Data Item 090 Flight Level in Binary Representation
+            message = remaining_line.pop(0)+" "+remaining_line.pop(0)
+            V, G, flight_level = get_flight_level(message)
+            new_csv_line = new_csv_line +";"+ str(V)+";"+str(G)+";"+str(flight_level)
+        elif fspec[5] == False:
+            V = G = flight_level = "N/A"
+            new_csv_line = new_csv_line +";"+ str(V)+";"+str(G)+";"+str(flight_level)
+
 
 
         csv_lines.append(new_csv_line)    
