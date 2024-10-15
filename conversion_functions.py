@@ -91,7 +91,6 @@ def get_fspec(line):
 
 # Decode 010
 def get_sac_sic(message):
-    print(message)
         
     # Dividimos el mensaje en tres octetos
     first_octet = message.split()[0]  
@@ -129,7 +128,105 @@ def get_time_of_day(message):
     time = f'{hours:02}:{minutes:02}:{seconds:06.3f}'
 
     # Retornamos los valores calculados
-    return hours, minutes, seconds, time
+    return time, total_seconds
+
+def get_target_report_descriptor(message):
+    # Initialize all values
+    TYP = SIM = RDP = SPI = RAB = TST = ERR = XPP = ME = MI = FOE_FRI = ADSB_EP = ADSB_VAL = SCN_EP = SCN_VAL = PAI_EP = PAI_VAL = None
+
+    # Split the message into octets
+    octets = message
+    unused_octets = octets.copy()  # Make a copy to track unused octets
+
+    if not octets:
+        return None, unused_octets  # Return if there are no octets to decode
+
+    # Decode the first octet
+    first_octet = octets[0]
+    unused_octets.pop(0)  # Remove the first octet from unused_octets
+
+    # Extract bits from the first octet
+    typ = first_octet[:3]  # Bits 8/6 (TYP)
+    sim = first_octet[3]   # Bit 5 (SIM)
+    rdp = first_octet[4]   # Bit 4 (RDP)
+    spi = first_octet[5]   # Bit 3 (SPI)
+    rab = first_octet[6]   # Bit 2 (RAB)
+    FX1 = first_octet[7]   # Bit 1 (FX of first octet)
+
+    # Interpret the values of TYP
+    typ_meaning = {
+        '000': "No detection",
+        '001': "Single PSR detection",
+        '010': "Single SSR detection",
+        '011': "SSR + PSR detection",
+        '100': "Single ModeS All-Call",
+        '101': "Single ModeS Roll-Call",
+        '110': "ModeS All-Call + PSR",
+        '111': "ModeS Roll-Call + PSR"
+    }
+
+    # Save results of the first octet
+    TYP = typ_meaning.get(typ, "Unknown Detection Type")  # Detection type
+    SIM = 'Simulated target report' if sim == '1' else 'Actual target report'  # Target report
+    RDP = 'RDP Chain 2' if rdp == '1' else 'RDP Chain 1'  # Report from RDP
+    SPI = 'Presence of SPI' if spi == '1' else 'Absence of SPI'  # Special Position Identification
+    RAB = 'Report from field monitor (fixed transponder)' if rab == '1' else 'Report from aircraft transponder'
+
+    # If FX1 is 1, we need to decode the second octet
+    if FX1 == '1' and len(unused_octets) > 0:
+        second_octet = octets[1]
+        unused_octets.pop(0)  # Remove the second octet from unused_octets
+
+        # Decode the second octet
+        tst = second_octet[0]  # Bit 8 (TST)
+        err = second_octet[1]  # Bit 7 (ERR)
+        xpp = second_octet[2]  # Bit 6 (XPP)
+        me = second_octet[3]   # Bit 5 (ME)
+        mi = second_octet[4]   # Bit 4 (MI)
+        foe_fri = second_octet[5:7]  # Bits 3/2 (FOE/FRI)
+        FX2 = second_octet[7]  # Bit 1 (FX of second octet)
+
+        # Interpret FOE/FRI
+        foe_fri_meaning = {
+            '00': "No Mode 4 interrogation",
+            '01': "Friendly target",
+            '10': "Unknown target",
+            '11': "No reply"
+        }
+
+        # Save results of the second octet
+        TST = 'Test target report' if tst == '1' else 'Real target report'
+        ERR = 'Extended Range present' if err == '1' else 'No Extended Range'
+        XPP = 'X-Pulse present' if xpp == '1' else 'No X-Pulse present'
+        ME = 'Military emergency' if me == '1' else 'No military emergency'
+        MI = 'Military identification' if mi == '1' else 'No military identification'
+        FOE_FRI = foe_fri_meaning.get(foe_fri, "Error decoding FOE/FRI")
+
+        # If FX2 is 1, we need to decode the third octet
+        if FX2 == '1' and len(unused_octets) > 0:
+            third_octet = octets[2]
+            unused_octets.pop(0)  # Remove the third octet from unused_octets
+
+            # Decode the third octet
+            adsb_ep = third_octet[0]  # Bit 8 (ADSB#EP)
+            adsb_val = third_octet[1]  # Bit 7 (ADSB#VAL)
+            scn_ep = third_octet[2]    # Bit 6 (SCN#EP)
+            scn_val = third_octet[3]   # Bit 5 (SCN#VAL)
+            pai_ep = third_octet[4]    # Bit 4 (PAI#EP)
+            pai_val = third_octet[5]   # Bit 3 (PAI#VAL)
+            FX3 = third_octet[7]       # Bit 2 (FX of third octet)
+
+            # Save results of the third octet
+            ADSB_EP = 'ADSB populated' if adsb_ep == '1' else 'ADSB not populated'
+            ADSB_VAL = 'Available' if adsb_val == '1' else 'Not Available'
+            SCN_EP = 'SCN populated' if scn_ep == '1' else 'SCN not populated'
+            SCN_VAL = 'Available' if scn_val == '1' else 'Not Available'
+            PAI_EP = 'PAI populated' if pai_ep == '1' else 'PAI not populated'
+            PAI_VAL = 'Available' if pai_val == '1' else 'Not Available'
+
+    # Return all decoded fields and the remaining unused octets
+    return TYP, SIM, RDP, SPI, RAB, TST, ERR, XPP, ME, MI, FOE_FRI, ADSB_EP, ADSB_VAL, SCN_EP, SCN_VAL, PAI_EP, PAI_VAL, unused_octets
+
 
 def convert_to_csv(input_file):
     lines = read_and_split_binary(input_file)
@@ -149,13 +246,18 @@ def convert_to_csv(input_file):
         if fspec[1] == True:
             # Data Item 140 Time of Day
             message = remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)
-            hours, minutes, seconds, time = get_time_of_day(message)
-            new_csv_line = new_csv_line+str(time)+";"
+            time, total_seconds = get_time_of_day(message)
+            new_csv_line = new_csv_line+str(time)+";"+str(total_seconds)+";"
+        if fspec[2] == True:
+            # Data Item 020 Target Report Descriptor
+            message = remaining_line
+            TYP, SIM, RDP, SPI, RAB, TST, ERR, XPP, ME, MI, FOE_FRI, ADSB_EP, ADSB_VAL, SCN_EP, SCN_VAL, PAI_EP, PAI_VAL, remaining_line = get_target_report_descriptor(message)
+            new_csv_line = new_csv_line +";"+ str(TYP)+";"+str(SIM)+";"+str(RDP)+";"+str(SPI)+";"+str(RAB)+";"+str(TST)+";"+str(ERR)+";"+str(XPP)+";"+str(ME)+";"+str(MI)+";"+str(FOE_FRI)
 
         print(new_csv_line)
         i = i+1
 
         
-
+# Missing to insert the latitude longitude and height at the position expected in csv
 
 convert_to_csv("assets/test.ast")
