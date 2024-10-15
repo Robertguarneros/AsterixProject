@@ -249,6 +249,30 @@ def get_measured_position_in_slant_coordinates(message):
     # Retornamos los valores de RHO y THETA
     return RHO, THETA
 
+# Decode 070
+def get_mode3a_code(message):
+
+     # Dividimos el mensaje en dos octetos
+    first_octet_bin = message.split()[0] 
+    second_octet_bin = message.split()[1] 
+
+    # Extraemos los bits de control directamente
+    V = 'Code not validated' if first_octet_bin[0] == '1' else 'Code Validated'  # Bit 16: Validación (V)
+    G = 'Garbled code' if first_octet_bin[1] == '1' else 'Default'  # Bit 15: Código Garbled (G)
+    L = 'Mode-3/A code not extracted during the last scan' if first_octet_bin[2] == '1' else 'Mode-3/A code derived from the reply of the transponder'  # Bit 14: Código derivado en la última exploración (L)
+
+    # Extraemos el código Mode-3/A en formato octal de bits 12 a 1 (de A4 a D1)
+    A = (int(first_octet_bin[4]) * 4) + (int(first_octet_bin[5]) * 2) + int(first_octet_bin[6])
+    B = (int(first_octet_bin[7]) * 4) + (int(second_octet_bin[0]) * 2) + int(second_octet_bin[1])
+    C = (int(second_octet_bin[2]) * 4) + (int(second_octet_bin[3]) * 2) + int(second_octet_bin[4])
+    D = (int(second_octet_bin[5]) * 4) + (int(second_octet_bin[6]) * 2) + int(second_octet_bin[7])
+
+    # Convertimos el código Mode-3/A en una representación octal
+    mode_3a_code = f'{A}{B}{C}{D}'
+
+    # Retornamos los valores de los bits de control y el código octal
+    return V, G, L, mode_3a_code
+
 def convert_to_csv(input_file):
     lines = read_and_split_binary(input_file)
     csv_lines = []
@@ -280,13 +304,21 @@ def convert_to_csv(input_file):
             message = remaining_line
             TYP, SIM, RDP, SPI, RAB, TST, ERR, XPP, ME, MI, FOE_FRI, ADSB_EP, ADSB_VAL, SCN_EP, SCN_VAL, PAI_EP, PAI_VAL, remaining_line_040 = get_target_report_descriptor(message)
             new_csv_line = new_csv_line +";"+ str(TYP)+";"+str(SIM)+";"+str(RDP)+";"+str(SPI)+";"+str(RAB)+";"+str(TST)+";"+str(ERR)+";"+str(XPP)+";"+str(ME)+";"+str(MI)+";"+str(FOE_FRI)
+            remaining_line = remaining_line_040
         elif fspec[2] == False:
             TYP = SIM = RDP = SPI = RAB = TST = ERR = XPP = ME = MI = FOE_FRI = "N/A"
             new_csv_line = new_csv_line +";"+ str(TYP)+";"+str(SIM)+";"+str(RDP)+";"+str(SPI)+";"+str(RAB)+";"+str(TST)+";"+str(ERR)+";"+str(XPP)+";"+str(ME)+";"+str(MI)+";"+str(FOE_FRI)
         if fspec[3] == True:
-            message = remaining_line_040.pop(0)+" "+remaining_line_040.pop(0)+" "+remaining_line_040.pop(0)+" "+remaining_line_040.pop(0)
+            message = remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)
             rho, theta = get_measured_position_in_slant_coordinates(message)
             new_csv_line = new_csv_line = new_csv_line +";"+ str(rho)+";"+str(theta)
+        elif fspec[3] == False:
+            rho = theta = "N/A"
+            new_csv_line = new_csv_line = new_csv_line +";"+ str(rho)+";"+str(theta)
+        if fspec[4] == True:
+            message = remaining_line.pop(0)+" "+remaining_line.pop(0)
+            V, G, L, mode_3a_code = get_mode3a_code(message)
+            new_csv_line = new_csv_line = new_csv_line +";"+ str(V)+";"+str(G)+";"+str(mode_3a_code)
 
 
         csv_lines.append(new_csv_line)    
