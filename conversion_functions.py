@@ -130,6 +130,7 @@ def get_time_of_day(message):
     # Retornamos los valores calculados
     return time, total_seconds
 
+# Decode 020
 def get_target_report_descriptor(message):
     # Initialize all values
     TYP = SIM = RDP = SPI = RAB = TST = ERR = XPP = ME = MI = FOE_FRI = ADSB_EP = ADSB_VAL = SCN_EP = SCN_VAL = PAI_EP = PAI_VAL = None
@@ -227,6 +228,26 @@ def get_target_report_descriptor(message):
     # Return all decoded fields and the remaining unused octets
     return TYP, SIM, RDP, SPI, RAB, TST, ERR, XPP, ME, MI, FOE_FRI, ADSB_EP, ADSB_VAL, SCN_EP, SCN_VAL, PAI_EP, PAI_VAL, unused_octets
 
+# Decode 040 
+def get_measured_position_in_slant_coordinates(message):
+
+    # Dividimos el mensaje en cuatro octetos (0,1 = RHO; 2,3 = THETA)
+    first_octet = message.split()[0]  
+    second_octet = message.split()[1]  
+    third_octet = message.split()[2]  
+    fourth_octet = message.split()[3]  
+
+    # Concatenamos los primeros dos octetos para obtener el valor de RHO (16 bits)
+    rho_bin = first_octet + second_octet
+    # Concatenamos los últimos dos octetos para obtener el valor de THETA (16 bits)
+    theta_bin = third_octet + fourth_octet
+
+    # Convertimos los binarios a decimal
+    RHO = int(rho_bin, 2) * (1 / 256)  # RHO en NM (cada bit es 1/256 NM)
+    THETA = int(theta_bin, 2) * (360 / 65536)  # THETA en grados (216 = 65536)
+
+    # Retornamos los valores de RHO y THETA
+    return RHO, THETA
 
 def convert_to_csv(input_file):
     lines = read_and_split_binary(input_file)
@@ -243,17 +264,29 @@ def convert_to_csv(input_file):
             message = remaining_line.pop(0)+" "+remaining_line.pop(0)
             sac, sic = get_sac_sic(message)
             new_csv_line = new_csv_line+str(sac)+";"+str(sic)+";"
+        elif fspec[0] == False:
+            sac = sic = "N/A"
+            new_csv_line = new_csv_line+str(sac)+";"+str(sic)+";"
         if fspec[1] == True:
             # Data Item 140 Time of Day
             message = remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)
             time, total_seconds = get_time_of_day(message)
             new_csv_line = new_csv_line+str(time)+";"+str(total_seconds)+";"
+        elif fspec[1] == False:
+            time = total_seconds = "N/A"
+            new_csv_line = new_csv_line+str(time)+";"+str(total_seconds)+";"
         if fspec[2] == True:
             # Data Item 020 Target Report Descriptor
             message = remaining_line
-            TYP, SIM, RDP, SPI, RAB, TST, ERR, XPP, ME, MI, FOE_FRI, ADSB_EP, ADSB_VAL, SCN_EP, SCN_VAL, PAI_EP, PAI_VAL, remaining_line = get_target_report_descriptor(message)
+            TYP, SIM, RDP, SPI, RAB, TST, ERR, XPP, ME, MI, FOE_FRI, ADSB_EP, ADSB_VAL, SCN_EP, SCN_VAL, PAI_EP, PAI_VAL, remaining_line_040 = get_target_report_descriptor(message)
             new_csv_line = new_csv_line +";"+ str(TYP)+";"+str(SIM)+";"+str(RDP)+";"+str(SPI)+";"+str(RAB)+";"+str(TST)+";"+str(ERR)+";"+str(XPP)+";"+str(ME)+";"+str(MI)+";"+str(FOE_FRI)
-
+        elif fspec[2] == False:
+            TYP = SIM = RDP = SPI = RAB = TST = ERR = XPP = ME = MI = FOE_FRI = "N/A"
+            new_csv_line = new_csv_line +";"+ str(TYP)+";"+str(SIM)+";"+str(RDP)+";"+str(SPI)+";"+str(RAB)+";"+str(TST)+";"+str(ERR)+";"+str(XPP)+";"+str(ME)+";"+str(MI)+";"+str(FOE_FRI)
+        if fspec[3] == True:
+            message = remaining_line_040.pop(0)+" "+remaining_line_040.pop(0)+" "+remaining_line_040.pop(0)+" "+remaining_line_040.pop(0)
+            rho, theta = get_measured_position_in_slant_coordinates(message)
+            new_csv_line = new_csv_line = new_csv_line +";"+ str(rho)+";"+str(theta)
         print(new_csv_line)
         i = i+1
 
