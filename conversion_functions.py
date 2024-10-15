@@ -589,6 +589,122 @@ def get_calculated_position(bytes):
     
     return x_nm, y_nm
 
+# Decode 200
+def get_calculated_track_velocity(bytes):
+
+    binary_octets = bytes.split()
+
+    data = [int(octet, 2) for octet in binary_octets]
+
+    groundspeed_raw = (data[0] << 8) + data[1]  # Combina octeto 1 y octeto 2
+
+    heading_raw = (data[2] << 8) + data[3]  # Combina octeto 3 y octeto 4
+
+    # El LSB es 2^-14 NM/s, 0.22 nudos por bit
+    groundspeed = groundspeed_raw * (2 ** -14) * 3600  # Convertir de NM/s a nudos (1 NM/s = 3600 NM/h = 3600 knots)
+
+    # El LSB es 360° / 2^16, 0.0055 grados por bit
+    heading = heading_raw * (360 / 65536)  # 2^16 = 65536
+
+    return groundspeed, heading
+
+# Decode 170
+# Decode 170
+def get_track_status(octet_list):
+
+    result = {}
+
+    # First octet processing
+    first_octet = octet_list[0]
+
+    CNF = int(first_octet[0]) 
+    RAD = int(first_octet[1:3], 2)  # Bits 7/6
+    DOU = int(first_octet[3])  # Bit 5
+    MAH = int(first_octet[4])  # Bit 4
+    CDM = int(first_octet[5:7], 2)  # Bits 3/2
+    FX = int(first_octet[7])  # Bit 1 (LSB)
+
+    # Set results with default N/A if unknown
+    result['CNF'] = "Tentative Track" if CNF == 1 else "Confirmed Track"
+    
+    if RAD == 0:
+        result['RAD'] = "Combined Track"
+    elif RAD == 1:
+        result['RAD'] = "PSR Track"
+    elif RAD == 2:
+        result['RAD'] = "SSR/Mode S Track"
+    else:
+        result['RAD'] = "N/A"
+
+    result['DOU'] = "Low confidence" if DOU == 1 else "Normal confidence"
+    result['MAH'] = "Horizontal maneuver sensed" if MAH == 1 else "No horizontal maneuver sensed"
+
+    if CDM == 0:
+        result['CDM'] = "Maintaining"
+    elif CDM == 1:
+        result['CDM'] = "Climbing"
+    elif CDM == 2:
+        result['CDM'] = "Descending"
+    else:
+        result['CDM'] = "N/A"
+
+    # Track how many octets were used
+    used_octets = 1
+
+    # Initialize extended fields as "N/A" in case they are not provided
+    result['TRE'] = "N/A"
+    result['GHO'] = "N/A"
+    result['SUP'] = "N/A"
+    result['TCC'] = "N/A"
+
+    # Check if FX (extension bit) is set
+    if FX == 1:
+        # Extended information available, reset to empty list
+        result['TRE'] = []
+        result['GHO'] = []
+        result['SUP'] = []
+        result['TCC'] = []
+        
+        # Loop through additional octets as long as FX is set
+        for i in range(1, len(octet_list)):
+            current_octet = octet_list[i]
+            
+            # Decode additional octet bits
+            TRE = int(current_octet[0]) 
+            GHO = int(current_octet[1]) 
+            SUP = int(current_octet[2])  
+            TCC = int(current_octet[3])  
+            FX = int(current_octet[7])  # Check the FX bit again to see if more octets follow
+
+            # Append decoded values to results
+            result['TRE'].append("End of track" if TRE == 1 else "Track still alive")
+            result['GHO'].append("Ghost target" if GHO == 1 else "True target")
+            result['SUP'].append("Track maintained by neighboring node" if SUP == 1 else "No neighboring node")
+            result['TCC'].append("Slant range correction" if TCC == 1 else "Radar plane tracking")
+
+            used_octets += 1
+
+            # Break the loop if FX is not set (no more octets)
+            if FX == 0:
+                break
+        
+    # Return remaining octets that were not used
+    remaining_octets = octet_list[used_octets:]
+
+    # If the extended fields are empty (no additional info), set them to "N/A"
+    if not result['TRE']:
+        result['TRE'] = "N/A"
+    if not result['GHO']:
+        result['GHO'] = "N/A"
+    if not result['SUP']:
+        result['SUP'] = "N/A"
+    if not result['TCC']:
+        result['TCC'] = "N/A"
+
+    return result, remaining_octets
+
+
+
 def convert_to_csv(input_file):
     lines = read_and_split_binary(input_file)
     csv_lines = []
@@ -600,107 +716,163 @@ def convert_to_csv(input_file):
         fspec, remaining_line = get_fspec(line)
     # 1 Data Item 010 SAC, SIC
         if fspec[0] == True:
-            message = remaining_line.pop(0)+" "+remaining_line.pop(0)
-            sac, sic = get_sac_sic(message)
-            new_csv_line = new_csv_line+str(sac)+";"+str(sic)+";"
+            try:
+                message = remaining_line.pop(0)+" "+remaining_line.pop(0)
+                sac, sic = get_sac_sic(message)
+                new_csv_line = new_csv_line+str(sac)+";"+str(sic)+";"
+            except IndexError:
+                new_csv_line += "N/A;N/A;"
         elif fspec[0] == False:
             sac = sic = "N/A"
             new_csv_line = new_csv_line+str(sac)+";"+str(sic)+";"
     # 2 Data Item 140 Time of Day
         if fspec[1] == True:
-            message = remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)
-            time, total_seconds = get_time_of_day(message)
-            new_csv_line = new_csv_line+str(time)+";"+str(total_seconds)+";"
+            try: 
+                message = remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)
+                time, total_seconds = get_time_of_day(message)
+                new_csv_line = new_csv_line+str(time)+";"+str(total_seconds)
+            except IndexError:
+                new_csv_line +=  "N/A;N/A"
         elif fspec[1] == False:
             time = total_seconds = "N/A"
-            new_csv_line = new_csv_line+str(time)+";"+str(total_seconds)+";"
+            new_csv_line = new_csv_line+str(time)+";"+str(total_seconds)+""
     # 3 Data Item 020 Target Report Descriptor
         if fspec[2] == True:
-            message = remaining_line
-            TYP, SIM, RDP, SPI, RAB, TST, ERR, XPP, ME, MI, FOE_FRI, ADSB_EP, ADSB_VAL, SCN_EP, SCN_VAL, PAI_EP, PAI_VAL, remaining_line_040 = get_target_report_descriptor(message)
-            new_csv_line = new_csv_line +";"+ str(TYP)+";"+str(SIM)+";"+str(RDP)+";"+str(SPI)+";"+str(RAB)+";"+str(TST)+";"+str(ERR)+";"+str(XPP)+";"+str(ME)+";"+str(MI)+";"+str(FOE_FRI)
-            remaining_line = remaining_line_040
+            try:
+                message = remaining_line
+                TYP, SIM, RDP, SPI, RAB, TST, ERR, XPP, ME, MI, FOE_FRI, ADSB_EP, ADSB_VAL, SCN_EP, SCN_VAL, PAI_EP, PAI_VAL, remaining_line_040 = get_target_report_descriptor(message)
+                new_csv_line = new_csv_line +";"+ str(TYP)+";"+str(SIM)+";"+str(RDP)+";"+str(SPI)+";"+str(RAB)+";"+str(TST)+";"+str(ERR)+";"+str(XPP)+";"+str(ME)+";"+str(MI)+";"+str(FOE_FRI)
+                remaining_line = remaining_line_040
+            except IndexError:
+                new_csv_line += ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
         elif fspec[2] == False:
             TYP = SIM = RDP = SPI = RAB = TST = ERR = XPP = ME = MI = FOE_FRI = "N/A"
             new_csv_line = new_csv_line +";"+ str(TYP)+";"+str(SIM)+";"+str(RDP)+";"+str(SPI)+";"+str(RAB)+";"+str(TST)+";"+str(ERR)+";"+str(XPP)+";"+str(ME)+";"+str(MI)+";"+str(FOE_FRI)
     # 4 Data Item 040 Measured Position in Slant Polar Coordinates
         if fspec[3] == True:
-            message = remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)
-            rho, theta = get_measured_position_in_slant_coordinates(message)
-            new_csv_line  = new_csv_line +";"+ str(rho)+";"+str(theta)
+            try: 
+                message = remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)+" "+remaining_line.pop(0)
+                rho, theta = get_measured_position_in_slant_coordinates(message)
+                new_csv_line  = new_csv_line +";"+ str(rho)+";"+str(theta)
+            except IndexError:
+                new_csv_line += ";N/A;N/A"
         elif fspec[3] == False:
             rho = theta = "N/A"
             new_csv_line =  new_csv_line +";"+ str(rho)+";"+str(theta)
     # 5 Data Item 070 Mode 3A Code in Octal Representation
         if fspec[4] == True:
-            message = remaining_line.pop(0)+" "+remaining_line.pop(0)
-            V, G, L, mode_3a_code = get_mode3a_code(message)
-            new_csv_line  = new_csv_line +";"+ str(V)+";"+str(G)+";"+str(mode_3a_code)
+            try: 
+                message = remaining_line.pop(0)+" "+remaining_line.pop(0)
+                V, G, L, mode_3a_code = get_mode3a_code(message)
+                new_csv_line  = new_csv_line +";"+ str(V)+";"+str(G)+";"+str(mode_3a_code)
+            except IndexError:
+                new_csv_line += ";N/A;N/A;N/A"
         elif fspec[4] == False:
             V = G = L = mode_3a_code = "N/A"
             new_csv_line = new_csv_line +";"+ str(V)+";"+str(G)+";"+str(mode_3a_code)
     # 6 Data Item 090 Flight Level in Binary Representation
         if fspec[5] == True:
-            message = remaining_line.pop(0)+" "+remaining_line.pop(0)
-            V, G, flight_level = get_flight_level(message)
-            new_csv_line = new_csv_line +";"+ str(V)+";"+str(G)+";"+str(flight_level)
+            try:
+                message = remaining_line.pop(0)+" "+remaining_line.pop(0)
+                V, G, flight_level = get_flight_level(message)
+                new_csv_line = new_csv_line +";"+ str(V)+";"+str(G)+";"+str(flight_level)
+            except IndexError:
+                new_csv_line += ";N/A;N/A;N/A"
         elif fspec[5] == False:
             V = G = flight_level = "N/A"
             new_csv_line = new_csv_line +";"+ str(V)+";"+str(G)+";"+str(flight_level)
     # 7 Data Item 130 Radar Plot Characteristics
         if fspec[6] == True:
-            message = remaining_line
-            result, remaining_line_130 = get_radar_plot_characteristics(message)
-            remaining_line = remaining_line_130
-            
-            # Iterate over the result dictionary and add each value to the CSV line
-            for key, value in result.items():
-                new_csv_line = new_csv_line + ";" + str(value)
+            try:
+                message = remaining_line
+                result, remaining_line_130 = get_radar_plot_characteristics(message)
+                remaining_line = remaining_line_130
+                # Iterate over the result dictionary and add each value to the CSV line
+                for key, value in result.items():
+                    new_csv_line = new_csv_line + ";" + str(value)
+            except IndexError:
+                new_csv_line += ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
         elif fspec[6] == False:
             new_csv_line = new_csv_line + ";" + "N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;"
     # 8 Data Item 220 Aircraft Address
         if fspec[7] == True:
-            message = remaining_line.pop(0) + " " + remaining_line.pop(0) + " " + remaining_line.pop(0)
-            ta = get_aircraft_address(message)
-            new_csv_line = new_csv_line +";" + str(ta)
+            try:
+                message = remaining_line.pop(0) + " " + remaining_line.pop(0) + " " + remaining_line.pop(0)
+                ta = get_aircraft_address(message)
+                new_csv_line = new_csv_line +";" + str(ta)
+            except IndexError:
+                new_csv_line += ";N/A"
         elif fspec[7] == False:
             ta = "N/A"
             new_csv_line = new_csv_line +";" + str(ta)
     # 9 Data Item 240 Aircraft Identification
         if fspec[8] == True:
-            message = remaining_line.pop(0) + " " + remaining_line.pop(0) + " " + remaining_line.pop(0) + " "+remaining_line.pop(0) + " " + remaining_line.pop(0) + " " + remaining_line.pop(0)
-            ia = get_aircraft_identification(message)
-            new_csv_line = new_csv_line+";" + str(ia)
+            try:
+                message = remaining_line.pop(0) + " " + remaining_line.pop(0) + " " + remaining_line.pop(0) + " "+remaining_line.pop(0) + " " + remaining_line.pop(0) + " " + remaining_line.pop(0)
+                ia = get_aircraft_identification(message)
+                new_csv_line = new_csv_line+";" + str(ia)
+            except IndexError:
+                new_csv_line += ";N/A"
         elif fspec[8] ==  False:
             ia = "N/A"
             new_csv_line = new_csv_line+";" + str(ia)
     # 10 Data Item 250 Mode S MB Data
         if fspec[9] == True:
-            ModesPresent, resultBDS4, resultBDS5, resultBDS6, remaining_line_250 = get_mode_s_mb_data(remaining_line)
-            remaining_line = remaining_line_250
-                
-            for key, value in resultBDS4.items():
-                new_csv_line = new_csv_line + ";" + str(value)
-            for key, value in resultBDS5.items():
-                new_csv_line = new_csv_line + ";" + str(value)
-            for key, value in resultBDS6.items():
-                new_csv_line = new_csv_line + ";" + str(value)
+            try:
+                ModesPresent, resultBDS4, resultBDS5, resultBDS6, remaining_line_250 = get_mode_s_mb_data(remaining_line)
+                remaining_line = remaining_line_250
+                    
+                for key, value in resultBDS4.items():
+                    new_csv_line = new_csv_line + ";" + str(value)
+                for key, value in resultBDS5.items():
+                    new_csv_line = new_csv_line + ";" + str(value)
+                for key, value in resultBDS6.items():
+                    new_csv_line = new_csv_line + ";" + str(value)
+            except IndexError:
+                new_csv_line += ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
         elif fspec[9] == False:
             new_csv_line = new_csv_line + ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
     # 11 Data Item 161 Track Number
         if fspec[10] ==  True:
-            message = remaining_line.pop(0) +" "+remaining_line.pop(0)
-            track_number = get_track_number(message)
-            new_csv_line = new_csv_line + ";" + str(track_number)
+            try:
+                message = remaining_line.pop(0) +" "+remaining_line.pop(0)
+                track_number = get_track_number(message)
+                new_csv_line = new_csv_line + ";" + str(track_number)
+            except IndexError:
+                new_csv_line += ";N/A"
         elif fspec[10] == False:
             new_csv_line = new_csv_line + ";N/A"
     # 12 Data Item 042 Calculated Position in Cartesian Coordinates
         if fspec[11] ==  True:
-            message = remaining_line.pop(0) +" "+remaining_line.pop(0)+" "+remaining_line.pop(0) +" "+remaining_line.pop(0)
-            x, y = get_track_number(message)
-            new_csv_line = new_csv_line + ";" + str(x)+ ";" + str(y)
+            try:
+                message = remaining_line.pop(0) +" "+remaining_line.pop(0)+" "+remaining_line.pop(0) +" "+remaining_line.pop(0)
+                x, y = get_track_number(message)
+                new_csv_line = new_csv_line + ";" + str(x)+ ";" + str(y)
+            except IndexError:
+                new_csv_line += ";N/A;N/A"
         elif fspec[11] == False:
             new_csv_line = new_csv_line + ";N/A;N/A"
+    # 13 Data Item 200 Calculated Track Velocity in Polar Representation
+        if fspec[12] == True:
+            try:
+                message = remaining_line.pop(0) +" "+remaining_line.pop(0)+" "+remaining_line.pop(0) +" "+remaining_line.pop(0)
+                groundspeed, heading = get_calculated_track_velocity(message)
+                new_csv_line = new_csv_line + ";" + str(groundspeed)+ ";" + str(heading)
+            except IndexError:
+                new_csv_line += ";N/A;N/A"
+        elif fspec[12] == False:
+            new_csv_line = new_csv_line + ";N/A;N/A"
+    # 14 Data Item Track Status
+        if fspec[13] == True:
+            try:
+                result, remaining_line_170 = get_track_status(remaining_line)
+                remaining_line = remaining_line_170
+                for key, value in result.items():
+                    new_csv_line = new_csv_line + ";" + str(value)
+            except IndexError:
+                new_csv_line += ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
+        elif fspec[13] == False:
+            new_csv_line += ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
 
 
 
