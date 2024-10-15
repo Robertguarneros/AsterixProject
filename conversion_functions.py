@@ -287,9 +287,13 @@ def convert_to_csv(input_file):
             message = remaining_line_040.pop(0)+" "+remaining_line_040.pop(0)+" "+remaining_line_040.pop(0)+" "+remaining_line_040.pop(0)
             rho, theta = get_measured_position_in_slant_coordinates(message)
             new_csv_line = new_csv_line = new_csv_line +";"+ str(rho)+";"+str(theta)
-        print(new_csv_line)
-        i = i+1
 
+
+        csv_lines.append(new_csv_line)    
+        i = i+1
+    # Write the CSV lines to a file if needed
+    with open("output.csv", "w") as csv_file:
+         csv_file.write("\n".join(csv_lines))
         
 # Missing to insert the latitude longitude and height at the position expected in csv
 
