@@ -392,7 +392,7 @@ def get_radar_plot_characteristics(octet_list):
     if subfields["SRL"] and octet_index < len(octet_list):
         srl_bits = octet_list[octet_index]
         srl_value = int(srl_bits, 2) * (360 / 2**13)
-        result["SSR Plot Runlength (degrees)"] = str(srl_value) + "dg"
+        result["SSR Plot Runlength (degrees)"] = str(srl_value) + " dg"
         octet_index += 1
     else:
         result["SSR Plot Runlength (degrees)"] = "N/A"
@@ -412,7 +412,7 @@ def get_radar_plot_characteristics(octet_list):
         sam_value = (
             int(sam_bits, 2) if sam_bits[0] == "0" else int(sam_bits, 2) - (1 << 8)
         )
-        result["Amplitude of MSSR Reply (dBm)"] = str(sam_value) + "dBm"
+        result["Amplitude of MSSR Reply (dBm)"] = str(sam_value) + " dBm"
         octet_index += 1
     else:
         result["Amplitude of MSSR Reply (dBm)"] = "N/A"
@@ -421,7 +421,7 @@ def get_radar_plot_characteristics(octet_list):
     if subfields["PRL"] and octet_index < len(octet_list):
         prl_bits = octet_list[octet_index]
         prl_value = int(prl_bits, 2) * (360 / 2**13)
-        result["Primary Plot Runlength (degrees)"] = str(prl_value) + "dg"
+        result["Primary Plot Runlength (degrees)"] = str(prl_value) + " dg"
         octet_index += 1
     else:
         result["Primary Plot Runlength (degrees)"] = "N/A"
@@ -432,7 +432,7 @@ def get_radar_plot_characteristics(octet_list):
         pam_value = (
             int(pam_bits, 2) if pam_bits[0] == "0" else int(pam_bits, 2) - (1 << 8)
         )
-        result["Amplitude of Primary Plot (dBm)"] = str(pam_value) + "dBm"
+        result["Amplitude of Primary Plot (dBm)"] = str(pam_value) + " dBm"
         octet_index += 1
     else:
         result["Amplitude of Primary Plot (dBm)"] = "N/A"
@@ -443,7 +443,7 @@ def get_radar_plot_characteristics(octet_list):
         rpd_value = (
             int(rpd_bits, 2) if rpd_bits[0] == "0" else int(rpd_bits, 2) - (1 << 8)
         )
-        result["Difference in Range (PSR-SSR) (NM)"] = str(rpd_value / 256) + "NM"
+        result["Difference in Range (PSR-SSR) (NM)"] = str(rpd_value / 256) + " NM"
         octet_index += 1
     else:
         result["Difference in Range (PSR-SSR) (NM)"] = "N/A"
@@ -455,7 +455,7 @@ def get_radar_plot_characteristics(octet_list):
             int(apd_bits, 2) if apd_bits[0] == "0" else int(apd_bits, 2) - (1 << 8)
         )
         result["Difference in Azimuth (PSR-SSR) (degrees)"] = (
-            str(apd_value * (360 / 2**14)) + "dg"
+            str(apd_value * (360 / 2**14)) + " dg"
         )
         octet_index += 1
     else:
@@ -963,7 +963,10 @@ def convert_to_csv(input_file):
                     new_csv_line += "N/A;N/A"
             elif not fspec[1]:
                 time = total_seconds = "N/A"
-                new_csv_line = new_csv_line + str(time) + ";" + str(total_seconds) + ""
+                new_csv_line = new_csv_line + str(time) + ";" + str(total_seconds)
+
+    # Temporary placeholder for lat, lon and height
+            new_csv_line += ";LAT;LON;H"
             # 3 Data Item 020 Target Report Descriptor
             if fspec[2]:
                 try:
@@ -1107,6 +1110,8 @@ def convert_to_csv(input_file):
                 new_csv_line = (
                     new_csv_line + ";" + str(V) + ";" + str(G) + ";" + str(flight_level)
                 )
+    # Temporary placeholder for mode c corrected
+            new_csv_line += ";MODE C corrected"
             # 7 Data Item 130 Radar Plot Characteristics
             if fspec[6]:
                 try:
