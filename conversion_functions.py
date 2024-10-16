@@ -56,6 +56,7 @@ def read_and_split_binary(input_file):
     return lines  # Return the list of lines
 
 
+
 # Get fspec for each line
 def get_fspec(line):
     DataItems = []
@@ -89,6 +90,11 @@ def get_fspec(line):
                 DataItems.append(True)
             elif bit == "0":
                 DataItems.append(False)
+
+    # Ensure DataItems has exactly 21 elements by appending False as needed
+    while len(DataItems) < 21:
+        DataItems.append(False)
+
     return DataItems, unused_octets
 
 
@@ -1186,11 +1192,11 @@ def convert_to_csv(input_file):
                     for key, value in resultBDS6.items():
                         new_csv_line = new_csv_line + ";" + str(value)
                 except IndexError:
-                    new_csv_line += ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
+                    new_csv_line += ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
             elif not fspec[9]:
                 new_csv_line = (
                     new_csv_line
-                    + ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
+                    + ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
                 )
             # Mode C corrected Altitude
             try:
@@ -1203,7 +1209,7 @@ def convert_to_csv(input_file):
                             new_csv_line = new_csv_line.replace("MODE C corrected", "")
                         else:
                             altitude_in_feet_corrected = float((flight_level)*100) + (QNH_actual - QNH_standard) * 30
-                            altitude_in_feet_corrected = round(altitude_in_feet_corrected,2)*10
+                            altitude_in_feet_corrected = round(altitude_in_feet_corrected,2)
                     new_csv_line = new_csv_line.replace("MODE C corrected", str(altitude_in_feet_corrected))
                 else:
                     new_csv_line = new_csv_line.replace("MODE C corrected", "")
@@ -1282,17 +1288,17 @@ def convert_to_csv(input_file):
                 )
             # 16 Data Item 030 Warning/Error Conditions/Target Classification Not needed
             if fspec[15]:
-                for i, octet in enumerate(remaining_line):
+                for j, octet in enumerate(remaining_line):
                     removed_octets += octet + " "
                 # If the last bit is 0, stop reading
                 if octet[7] == "0":
                     unused_octets = remaining_line[
-                        i + 1 :
+                        j + 1 :
                     ]  # Store remaining unread octets
                 try:
                     remaining_line = unused_octets
                 except UnboundLocalError:
-                    print("Not enough octets to process Data Item 030")
+                    print("Not enough octets to process Data Item 030 in line "+str(i))
             # 17 Data Item 080 Mode 3A Code Confidence Indicator Not needed
             if fspec[16]:
                 removed_octets = remaining_line.pop(0) + " " + remaining_line.pop(0)
@@ -1346,7 +1352,7 @@ def convert_to_csv(input_file):
                             removed_octets += extension_octet + " "
                             # Stop reading if the last bit (FX) is 0
                             if extension_octet[7] == "0":
-                                break
+                                print("Last bit is 0, stopping reading")
 
                 except IndexError:
                     print("Not enough octets to process Data Item 120")
@@ -1365,13 +1371,12 @@ def convert_to_csv(input_file):
             csv_lines.append(new_csv_line)
             i = i + 1
         except IndexError:
-            pass
+            print("Not enough octets to process line "+str(i))
     # Write the CSV lines to a file if needed
     with open("output.csv", "w") as csv_file:
         csv_file.write("\n".join(csv_lines))
 
 
-# Missing to insert the latitude longitude and height at the position expected in csv, also missing mode c?
-# En corrected mode c altitude, why is it sometimes multiplied by 10 and sometimes by 100? Por las unidades ya esta en pies, no es necesario multiplicar por 10 ni 100
+# Missing to insert the latitude longitude and height at the position expected in csv?
 
 convert_to_csv("assets/test.ast")
