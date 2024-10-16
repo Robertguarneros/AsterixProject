@@ -336,27 +336,29 @@ def get_mode3a_code(message):
 
 # Decode 090
 def get_flight_level(message):
+    # Split the message into two octets
+    first_octet_bin = message.split()[0]  # First octet in binary
+    second_octet_bin = message.split()[1]  # Second octet in binary
 
-    # Dividimos el mensaje en dos octetos
-    first_octet_bin = message.split()[0]  # Primer octeto en binario
-    second_octet_bin = message.split()[1]  # Segundo octeto en binario
+    # Extract control bits
+    V = "Code not validated" if first_octet_bin[0] == "1" else "Code Validated"  # Bit 16: Validation (V)
+    G = "Garbled code" if first_octet_bin[1] == "1" else "Default"  # Bit 15: Garbled code (G)
 
-    # Extraemos los bits de control directamente
-    V = (
-        "Code not validated" if first_octet_bin[0] == "1" else "Code Validated"
-    )  # Bit 16: Validación (V)
-    G = (
-        "Garbled code" if first_octet_bin[1] == "1" else "Default"
-    )  # Bit 15: Código Garbled (G)
+    # Extract the flight level (bits 14 to 1) as a single block
+    flight_level_bin = first_octet_bin[2:] + second_octet_bin  # From bits 14 to 1
 
-    # Extraemos el nivel de vuelo (bits 14 a 1) como un solo bloque
-    flight_level_bin = first_octet_bin[2:] + second_octet_bin  # De bits 14 a 1
+    # Interpret the flight level binary as a signed 14-bit integer (two's complement)
+    if flight_level_bin[0] == '1':  # Negative value
+        flight_level = -((1 << 14) - int(flight_level_bin, 2))
+    else:  # Positive value
+        flight_level = int(flight_level_bin, 2)
 
-    # Convertimos el nivel de vuelo a decimal
-    flight_level = int(flight_level_bin, 2) * 0.25  # LSB=1/4 FL
+    # Convert to the actual flight level using LSB = 1/4 FL
+    flight_level *= 0.25
 
-    # Retornamos los valores de los bits de control y el nivel de vuelo
+    # Return control bits and the flight level
     return V, G, flight_level
+
 
 
 # Decode 130
@@ -929,7 +931,7 @@ def get_comms(bytes):
 def convert_to_csv(input_file):
     lines = read_and_split_binary(input_file)
     csv_lines = []
-    new_csv_line = "NUM;SAC;SIC;TIME;TIME(s);LAT;LON;H;TYP_020;SIM_020;RDP_020;SPI_020;RAB_020;TST_020;ERR_020;XPP_020;ME_020;MI_020;FOE_FRI_020;RHO;THETA;V_070;G_070;MODE 3/A;V_090;G_090;FL;MODE C corrected;SRL_130;SSR_130;SAM_130;PRL_130;PAM_130;RPD_130;APD_130;TA;TI;MCP_ALT;FMS_ALT;BP;VNAV;ALT_HOLD;APP;TARGET_ALT_SOURCE;RA;TTA;GS;TAR;TAS;HDG;IAS;MACH;BAR;IVV;TN;X;Y;GS_KT;HEADING;CNF_170;RAD_170;DOU_170;MAH_170;CDM_170;TRE_170;GHO_170;SUP_170;TCC_170;HEIGHT;COM_230;STAT_230;SI_230;MSCC_230;ARC_230;AIC_230;B1A_230;B1B_230"
+    new_csv_line = "NUM;SAC;SIC;TIME;TIME(s);LAT;LON;H;TYP_020;SIM_020;RDP_020;SPI_020;RAB_020;TST_020;ERR_020;XPP_020;ME_020;MI_020;FOE_FRI_020;RHO;THETA;V_070;G_070;MODE 3/A;V_090;G_090;FL;MODE C Corrected Altitude;SRL_130;SSR_130;SAM_130;PRL_130;PAM_130;RPD_130;APD_130;TA;TI;MCP_ALT;FMS_ALT;BP;VNAV;ALT_HOLD;APP;TARGET_ALT_SOURCE;RA;TTA;GS;TAR;TAS;HDG;IAS;MACH;BAR;IVV;TN;X;Y;GS_KT;HEADING;CNF_170;RAD_170;DOU_170;MAH_170;CDM_170;TRE_170;GHO_170;SUP_170;TCC_170;HEIGHT;COM_230;STAT_230;SI_230;MSCC_230;ARC_230;AIC_230;B1A_230;B1B_230"
     csv_lines.append(new_csv_line)
     i = 1
     for line in lines:
@@ -1110,7 +1112,7 @@ def convert_to_csv(input_file):
                 new_csv_line = (
                     new_csv_line + ";" + str(V) + ";" + str(G) + ";" + str(flight_level)
                 )
-    # Temporary placeholder for mode c corrected
+            # Temporary placeholder for mode c corrected
             new_csv_line += ";MODE C corrected"
             # 7 Data Item 130 Radar Plot Characteristics
             if fspec[6]:
@@ -1190,6 +1192,24 @@ def convert_to_csv(input_file):
                     new_csv_line
                     + ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
                 )
+            # Mode C corrected Altitude
+            try:
+                altitude_in_feet_corrected = ""  # Default value in case conditions are not met
+                if resultBDS4.get("BAROMETRIC PRESSURE SETTING") != "N/A":
+                    QNH_actual = float(resultBDS4.get("BAROMETRIC PRESSURE SETTING"))
+                    QNH_standard = 1013.2
+                    if float(flight_level) < 60:
+                        if 1013<= QNH_actual <= 1013.3:
+                            new_csv_line = new_csv_line.replace("MODE C corrected", "")
+                        else:
+                            altitude_in_feet_corrected = float((flight_level)*100) + (QNH_actual - QNH_standard) * 30
+                            altitude_in_feet_corrected = round(altitude_in_feet_corrected,2)*10
+                    new_csv_line = new_csv_line.replace("MODE C corrected", str(altitude_in_feet_corrected))
+                else:
+                    new_csv_line = new_csv_line.replace("MODE C corrected", "")
+            except ValueError:
+                new_csv_line = new_csv_line.replace("MODE C corrected", "")
+
             # 11 Data Item 161 Track Number
             if fspec[10]:
                 try:
@@ -1352,5 +1372,6 @@ def convert_to_csv(input_file):
 
 
 # Missing to insert the latitude longitude and height at the position expected in csv, also missing mode c?
+# En corrected mode c altitude, why is it sometimes multiplied by 10 and sometimes by 100? Por las unidades ya esta en pies, no es necesario multiplicar por 10 ni 100
 
 convert_to_csv("assets/test.ast")
