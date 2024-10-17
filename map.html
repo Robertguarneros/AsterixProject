@@ -6,32 +6,63 @@
     <title>Aircraft Tracking Map</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        .rotated-icon {
+            transform-origin: center; /* Establece el centro de rotación */
+        }
+    </style>
 </head>
 <body>
     <div id="map" style="width: 100%; height: 100vh;"></div>
     <script>
-        var map = L.map('map').setView([41.3874, 2.1686], 5);
+        var map = L.map('map').setView([41.3874, 2.1686], 7);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
         
         // Define a custom airplane icon
-        var airplaneIcon = L.icon({
-            iconUrl: 'file:///assets/airplane-10-64.ico',  // Corrected path to airplane image
-            iconSize: [64, 64],       // Size of the icon (width, height)
-            iconAnchor: [32, 32],     // Point of the icon that will correspond to the marker's location
-            popupAnchor: [0, 0]     // Point from which the popup should open relative to the iconAnchor
-        });
-
-        // Function to add an aircraft marker with the airplane icon
-        function addAircraft(lat, lon) {
-            L.marker([lat, lon], { icon: airplaneIcon }).addTo(map)
-                .bindPopup("Aircraft Position: " + lat + ", " + lon);
+        function createAirplaneIcon(heading) {
+            return L.divIcon({
+                html: `<img src='./assets/airplane-10-64.ico' style='transform: rotate(${heading-90}deg); width: 43px; height: 43px;'>`,
+                className: 'rotated-icon',  // Agregamos la clase para rotar
+                iconSize: [43, 43],         // Tamaño del ícono
+                iconAnchor: [32, 32],       // Punto de anclaje del ícono
+                popupAnchor: [0, 0]         // Punto desde el cual se abre el popup
+            });
         }
 
-        // Example: Adding an aircraft marker at a specific location
-        addAircraft(41.3874, 2.1686);  // Aircraft at Barcelona
+        var aircraftMarkers = {};
+
+        function addAircraft(latitude, longitude, ti, heading) {
+            var marker = L.marker([latitude, longitude], { icon: createAirplaneIcon(heading) }).addTo(map);
+            marker.bindPopup("TI: " + ti + "<br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Heading: " + heading);
+            marker.on('click', function () {
+                marker.openPopup();
+            });
+
+            aircraftMarkers[ti] = marker;
+        }
+
+        function updateAircraft(ti, latitude, longitude, heading) {
+            // Locate the aircraft by TI and update its position on the map
+            var marker = findAircraftByTi(ti);
+            if (marker) {
+                // Update the marker's position
+                marker.setLatLng([latitude, longitude]);
+                // Update the marker's icon with the new heading
+                marker.setIcon(createAirplaneIcon(heading));
+                marker.bindPopup("TI: " + ti + "<br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Heading: " + heading);  // Update popup
+            } else {
+                // If the aircraft doesn't exist, add it
+                addAircraft(latitude, longitude, ti, heading);
+            }
+        }
+
+        function findAircraftByTi(ti) {
+            // Retorna el marcador almacenado en el mapa, si existe
+            return aircraftMarkers[ti];
+        }
     </script>
 </body>
 </html>
