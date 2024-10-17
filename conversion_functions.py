@@ -1,5 +1,6 @@
 import re
-
+import math
+import numpy as np
 
 # Open and read binary
 def read_and_split_binary(input_file):
@@ -934,6 +935,88 @@ def get_comms(bytes):
     return result
 
 
+# Constants
+A = 6378137.0  # Semi-major axis in meters
+E2 = 0.00669437999014  # Eccentricity squared for WGS84
+B = 6356752.3142  # Semi-minor axis in meters
+
+def calculate_rotation_matrix(lat, lon):
+    """
+    Calculates the rotation matrix for given latitude and longitude (in radians).
+    """
+    r11 = -np.sin(lon)
+    r12 = np.cos(lon)
+    r13 = 0
+    r21 = -np.sin(lat) * np.cos(lon)
+    r22 = -np.sin(lat) * np.sin(lon)
+    r23 = np.cos(lat)
+    r31 = np.cos(lat) * np.cos(lon)
+    r32 = np.cos(lat) * np.sin(lon)
+    r33 = np.sin(lat)
+    return np.array([[r11, r12, r13], [r21, r22, r23], [r31, r32, r33]])
+
+def calculate_translation_matrix(lat, lon, alt):
+    """
+    Calculates the translation matrix for a given latitude, longitude (in radians), and altitude (in meters).
+    """
+    nu = A / np.sqrt(1 - E2 * np.sin(lat)**2)
+    tx = (nu + alt) * np.cos(lat) * np.cos(lon)
+    ty = (nu + alt) * np.cos(lat) * np.sin(lon)
+    tz = (nu * (1 - E2) + alt) * np.sin(lat)
+    return np.array([tx, ty, tz])
+
+def polar_to_cartesian(rho, theta, elevation):
+    """
+    Converts polar coordinates (ρ, θ, elevation) to Cartesian (x, y, z).
+    ρ is in meters, θ and elevation are in radians.
+    """
+    x = rho * np.cos(elevation) * np.sin(theta)
+    y = rho * np.cos(elevation) * np.cos(theta)
+    z = rho * np.sin(elevation)
+    return np.array([x, y, z])
+
+def cartesian_to_geocentric(cartesian_coords, radar_coords):
+    """
+    Converts local Cartesian coordinates to geocentric coordinates using radar's position.
+    """
+    lat, lon, alt = radar_coords
+    translation_matrix = calculate_translation_matrix(lat, lon, alt)
+    rotation_matrix = calculate_rotation_matrix(lat, lon)
+    rotated_vector = np.matmul(rotation_matrix.T, cartesian_coords)
+    geocentric_coords = rotated_vector + translation_matrix
+    return geocentric_coords
+
+def geocentric_to_geodesic(c):
+    """
+    Converts geocentric (x, y, z) to geodetic coordinates (latitude, longitude, height).
+    """
+    x, y, z = c
+    d_xy = np.sqrt(x**2 + y**2)
+
+    if abs(x) < 1e-10 and abs(y) < 1e-10:
+        lat = np.pi / 2.0 if z >= 0 else -np.pi / 2.0
+        lon = 0
+        alt = abs(z) - B
+    else:
+        lat = np.arctan((z / d_xy) / (1 - (A * E2) / np.sqrt(d_xy**2 + z**2)))
+        nu = A / np.sqrt(1 - E2 * np.sin(lat)**2)
+        alt = (d_xy / np.cos(lat)) - nu
+        Lat_over = -0.1 if lat >= 0 else 0.1
+
+        # Iterative refinement
+        loop_count = 0
+        while abs(lat - Lat_over) > 1e-12 and loop_count < 50:
+            Lat_over = lat
+            lat = np.arctan((z * (1 + alt / nu)) / (d_xy * ((1 - E2) + (alt / nu))))
+            nu = A / np.sqrt(1 - E2 * np.sin(lat)**2)
+            alt = d_xy / np.cos(lat) - nu
+            loop_count += 1
+
+        lon = np.arctan2(y, x)
+
+    return np.degrees(lat), np.degrees(lon), alt
+
+# Function that processes all the data items in a single line
 def convert_to_csv(input_file):
     lines = read_and_split_binary(input_file)
     csv_lines = []
@@ -1069,6 +1152,7 @@ def convert_to_csv(input_file):
                         + remaining_line.pop(0)
                     )
                     rho, theta = get_measured_position_in_slant_coordinates(message)
+                    rho_measurement = rho
                     new_csv_line = new_csv_line + ";" + str(rho) + ";" + str(theta)
                 except IndexError:
                     new_csv_line += ";N/A;N/A"
@@ -1130,9 +1214,9 @@ def convert_to_csv(input_file):
                     for key, value in result.items():
                         new_csv_line = new_csv_line + ";" + str(value)
                 except IndexError:
-                    new_csv_line += ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
+                    new_csv_line += ";N/A;N/A;N/A;N/A;N/A;N/A;N/A"
             elif not fspec[6]:
-                new_csv_line = new_csv_line + ";" + "N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;"
+                new_csv_line = new_csv_line + ";" + "N/A;N/A;N/A;N/A;N/A;N/A;N/A"
             # 8 Data Item 220 Aircraft Address
             if fspec[7]:
                 try:
@@ -1148,8 +1232,7 @@ def convert_to_csv(input_file):
                 except IndexError:
                     new_csv_line += ";N/A"
             elif not fspec[7]:
-                ta = "N/A"
-                new_csv_line = new_csv_line + ";" + str(ta)
+                new_csv_line += ";N/A"
             # 9 Data Item 240 Aircraft Identification
             if fspec[8]:
                 try:
@@ -1171,8 +1254,7 @@ def convert_to_csv(input_file):
                 except IndexError:
                     new_csv_line += ";N/A"
             elif not fspec[8]:
-                ia = "N/A"
-                new_csv_line = new_csv_line + ";" + str(ia)
+                new_csv_line += ";N/A"
             # 10 Data Item 250 Mode S MB Data
             if fspec[9]:
                 try:
@@ -1200,7 +1282,7 @@ def convert_to_csv(input_file):
                 )
             # Mode C corrected Altitude
             try:
-                altitude_in_feet_corrected = ""  # Default value in case conditions are not met
+                altitude_in_feet_corrected = 0  # Default value in case conditions are not met
                 if resultBDS4.get("BAROMETRIC PRESSURE SETTING") != "N/A":
                     QNH_actual = float(resultBDS4.get("BAROMETRIC PRESSURE SETTING"))
                     QNH_standard = 1013.2
@@ -1210,12 +1292,50 @@ def convert_to_csv(input_file):
                         else:
                             altitude_in_feet_corrected = float((flight_level)*100) + (QNH_actual - QNH_standard) * 30
                             altitude_in_feet_corrected = round(altitude_in_feet_corrected,2)
-                    new_csv_line = new_csv_line.replace("MODE C corrected", str(altitude_in_feet_corrected))
+                            new_csv_line = new_csv_line.replace("MODE C corrected", str(altitude_in_feet_corrected))
+                    else:
+                        new_csv_line = new_csv_line.replace("MODE C corrected", "")
+
                 else:
                     new_csv_line = new_csv_line.replace("MODE C corrected", "")
             except ValueError:
                 new_csv_line = new_csv_line.replace("MODE C corrected", "")
+            # Calculate height / elevation
+            try:
+                H = 0.0 # Altitude of the Aircraft
+                El = 0 # Elevation
+                Rti = 6371000.0 # Earth Radius at the Radar Position
+                Hri = 2.007 + 25.25 # Altitude of ith Radar
+                rho = float(rho) * 1852 # Convert from NM to meters
+                if flight_level == "N/A":
+                    H = 0
+                elif float(flight_level) < 60:
+                    if 1013<= QNH_actual <= 1013.3:
+                        H = float((flight_level)*100*0.3048)
+                    else:
+                        H = float(altitude_in_feet_corrected) * 0.3048
+                else: 
+                    H = float((flight_level)*100*0.3048)
+                num = 2 * Rti * (H-Hri) + H ** 2 - Hri ** 2 - rho ** 2
+                den = 2 * rho * (Rti + Hri)
+                El = math.asin(num/den)
+            except ValueError:
+                print("Error calculating height in line "+str(i))
+            # Calculate Latitude and Longitude and Height
+            try:
+                if El != 0:
+                    radar_coords = (np.radians(41.3007023), np.radians(2.1020588), 2.007 + 25.25)  # Latitude, Longitude in radians, height in meters
+                    polar_coords = (float(rho_measurement)*1852, np.radians(float(theta)), El)  # Rho in meters, theta in radians, elevation in radians
 
+                    cartesian_coords = polar_to_cartesian(*polar_coords)
+                    geocentric_coords = cartesian_to_geocentric(cartesian_coords, radar_coords)
+                    lat, lon, alt = geocentric_to_geodesic(geocentric_coords)
+
+                    new_csv_line = new_csv_line.replace("LAT;LON;H", str(lat)+";"+str(lon)+";"+str(alt))
+                else:
+                    new_csv_line = new_csv_line.replace("LAT;LON;H", "N/A;N/A;N/A")
+            except ValueError:
+                new_csv_line = new_csv_line.replace("LAT;LON;H", "N/A;N/A;N/A")
             # 11 Data Item 161 Track Number
             if fspec[10]:
                 try:
