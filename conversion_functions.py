@@ -56,6 +56,7 @@ def read_and_split_binary(input_file):
     return lines  # Return the list of lines
 
 
+
 # Get fspec for each line
 def get_fspec(line):
     DataItems = []
@@ -89,6 +90,11 @@ def get_fspec(line):
                 DataItems.append(True)
             elif bit == "0":
                 DataItems.append(False)
+
+    # Ensure DataItems has exactly 21 elements by appending False as needed
+    while len(DataItems) < 21:
+        DataItems.append(False)
+
     return DataItems, unused_octets
 
 
@@ -336,27 +342,29 @@ def get_mode3a_code(message):
 
 # Decode 090
 def get_flight_level(message):
+    # Split the message into two octets
+    first_octet_bin = message.split()[0]  # First octet in binary
+    second_octet_bin = message.split()[1]  # Second octet in binary
 
-    # Dividimos el mensaje en dos octetos
-    first_octet_bin = message.split()[0]  # Primer octeto en binario
-    second_octet_bin = message.split()[1]  # Segundo octeto en binario
+    # Extract control bits
+    V = "Code not validated" if first_octet_bin[0] == "1" else "Code Validated"  # Bit 16: Validation (V)
+    G = "Garbled code" if first_octet_bin[1] == "1" else "Default"  # Bit 15: Garbled code (G)
 
-    # Extraemos los bits de control directamente
-    V = (
-        "Code not validated" if first_octet_bin[0] == "1" else "Code Validated"
-    )  # Bit 16: Validación (V)
-    G = (
-        "Garbled code" if first_octet_bin[1] == "1" else "Default"
-    )  # Bit 15: Código Garbled (G)
+    # Extract the flight level (bits 14 to 1) as a single block
+    flight_level_bin = first_octet_bin[2:] + second_octet_bin  # From bits 14 to 1
 
-    # Extraemos el nivel de vuelo (bits 14 a 1) como un solo bloque
-    flight_level_bin = first_octet_bin[2:] + second_octet_bin  # De bits 14 a 1
+    # Interpret the flight level binary as a signed 14-bit integer (two's complement)
+    if flight_level_bin[0] == '1':  # Negative value
+        flight_level = -((1 << 14) - int(flight_level_bin, 2))
+    else:  # Positive value
+        flight_level = int(flight_level_bin, 2)
 
-    # Convertimos el nivel de vuelo a decimal
-    flight_level = int(flight_level_bin, 2) * 0.25  # LSB=1/4 FL
+    # Convert to the actual flight level using LSB = 1/4 FL
+    flight_level *= 0.25
 
-    # Retornamos los valores de los bits de control y el nivel de vuelo
+    # Return control bits and the flight level
     return V, G, flight_level
+
 
 
 # Decode 130
@@ -392,7 +400,7 @@ def get_radar_plot_characteristics(octet_list):
     if subfields["SRL"] and octet_index < len(octet_list):
         srl_bits = octet_list[octet_index]
         srl_value = int(srl_bits, 2) * (360 / 2**13)
-        result["SSR Plot Runlength (degrees)"] = str(srl_value) + "dg"
+        result["SSR Plot Runlength (degrees)"] = str(srl_value) + " dg"
         octet_index += 1
     else:
         result["SSR Plot Runlength (degrees)"] = "N/A"
@@ -412,7 +420,7 @@ def get_radar_plot_characteristics(octet_list):
         sam_value = (
             int(sam_bits, 2) if sam_bits[0] == "0" else int(sam_bits, 2) - (1 << 8)
         )
-        result["Amplitude of MSSR Reply (dBm)"] = str(sam_value) + "dBm"
+        result["Amplitude of MSSR Reply (dBm)"] = str(sam_value) + " dBm"
         octet_index += 1
     else:
         result["Amplitude of MSSR Reply (dBm)"] = "N/A"
@@ -421,7 +429,7 @@ def get_radar_plot_characteristics(octet_list):
     if subfields["PRL"] and octet_index < len(octet_list):
         prl_bits = octet_list[octet_index]
         prl_value = int(prl_bits, 2) * (360 / 2**13)
-        result["Primary Plot Runlength (degrees)"] = str(prl_value) + "dg"
+        result["Primary Plot Runlength (degrees)"] = str(prl_value) + " dg"
         octet_index += 1
     else:
         result["Primary Plot Runlength (degrees)"] = "N/A"
@@ -432,7 +440,7 @@ def get_radar_plot_characteristics(octet_list):
         pam_value = (
             int(pam_bits, 2) if pam_bits[0] == "0" else int(pam_bits, 2) - (1 << 8)
         )
-        result["Amplitude of Primary Plot (dBm)"] = str(pam_value) + "dBm"
+        result["Amplitude of Primary Plot (dBm)"] = str(pam_value) + " dBm"
         octet_index += 1
     else:
         result["Amplitude of Primary Plot (dBm)"] = "N/A"
@@ -443,7 +451,7 @@ def get_radar_plot_characteristics(octet_list):
         rpd_value = (
             int(rpd_bits, 2) if rpd_bits[0] == "0" else int(rpd_bits, 2) - (1 << 8)
         )
-        result["Difference in Range (PSR-SSR) (NM)"] = str(rpd_value / 256) + "NM"
+        result["Difference in Range (PSR-SSR) (NM)"] = str(rpd_value / 256) + " NM"
         octet_index += 1
     else:
         result["Difference in Range (PSR-SSR) (NM)"] = "N/A"
@@ -455,7 +463,7 @@ def get_radar_plot_characteristics(octet_list):
             int(apd_bits, 2) if apd_bits[0] == "0" else int(apd_bits, 2) - (1 << 8)
         )
         result["Difference in Azimuth (PSR-SSR) (degrees)"] = (
-            str(apd_value * (360 / 2**14)) + "dg"
+            str(apd_value * (360 / 2**14)) + " dg"
         )
         octet_index += 1
     else:
@@ -929,7 +937,7 @@ def get_comms(bytes):
 def convert_to_csv(input_file):
     lines = read_and_split_binary(input_file)
     csv_lines = []
-    new_csv_line = "NUM;SAC;SIC;TIME;TIME(s);LAT;LON;H;TYP_020;SIM_020;RDP_020;SPI_020;RAB_020;TST_020;ERR_020;XPP_020;ME_020;MI_020;FOE_FRI_020;RHO;THETA;V_070;G_070;MODE 3/A;V_090;G_090;FL;MODE C corrected;SRL_130;SSR_130;SAM_130;PRL_130;PAM_130;RPD_130;APD_130;TA;TI;MCP_ALT;FMS_ALT;BP;VNAV;ALT_HOLD;APP;TARGET_ALT_SOURCE;RA;TTA;GS;TAR;TAS;HDG;IAS;MACH;BAR;IVV;TN;X;Y;GS_KT;HEADING;CNF_170;RAD_170;DOU_170;MAH_170;CDM_170;TRE_170;GHO_170;SUP_170;TCC_170;HEIGHT;COM_230;STAT_230;SI_230;MSCC_230;ARC_230;AIC_230;B1A_230;B1B_230"
+    new_csv_line = "NUM;SAC;SIC;TIME;TIME(s);LAT;LON;H;TYP_020;SIM_020;RDP_020;SPI_020;RAB_020;TST_020;ERR_020;XPP_020;ME_020;MI_020;FOE_FRI_020;RHO;THETA;V_070;G_070;MODE 3/A;V_090;G_090;FL;MODE C Corrected Altitude;SRL_130;SSR_130;SAM_130;PRL_130;PAM_130;RPD_130;APD_130;TA;TI;MCP_ALT;FMS_ALT;BP;VNAV;ALT_HOLD;APP;TARGET_ALT_SOURCE;RA;TTA;GS;TAR;TAS;HDG;IAS;MACH;BAR;IVV;TN;X;Y;GS_KT;HEADING;CNF_170;RAD_170;DOU_170;MAH_170;CDM_170;TRE_170;GHO_170;SUP_170;TCC_170;HEIGHT;COM_230;STAT_230;SI_230;MSCC_230;ARC_230;AIC_230;B1A_230;B1B_230"
     csv_lines.append(new_csv_line)
     i = 1
     for line in lines:
@@ -963,7 +971,10 @@ def convert_to_csv(input_file):
                     new_csv_line += "N/A;N/A"
             elif not fspec[1]:
                 time = total_seconds = "N/A"
-                new_csv_line = new_csv_line + str(time) + ";" + str(total_seconds) + ""
+                new_csv_line = new_csv_line + str(time) + ";" + str(total_seconds)
+
+    # Temporary placeholder for lat, lon and height
+            new_csv_line += ";LAT;LON;H"
             # 3 Data Item 020 Target Report Descriptor
             if fspec[2]:
                 try:
@@ -1107,6 +1118,8 @@ def convert_to_csv(input_file):
                 new_csv_line = (
                     new_csv_line + ";" + str(V) + ";" + str(G) + ";" + str(flight_level)
                 )
+            # Temporary placeholder for mode c corrected
+            new_csv_line += ";MODE C corrected"
             # 7 Data Item 130 Radar Plot Characteristics
             if fspec[6]:
                 try:
@@ -1179,12 +1192,30 @@ def convert_to_csv(input_file):
                     for key, value in resultBDS6.items():
                         new_csv_line = new_csv_line + ";" + str(value)
                 except IndexError:
-                    new_csv_line += ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
+                    new_csv_line += ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
             elif not fspec[9]:
                 new_csv_line = (
                     new_csv_line
-                    + ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
+                    + ";N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A;N/A"
                 )
+            # Mode C corrected Altitude
+            try:
+                altitude_in_feet_corrected = ""  # Default value in case conditions are not met
+                if resultBDS4.get("BAROMETRIC PRESSURE SETTING") != "N/A":
+                    QNH_actual = float(resultBDS4.get("BAROMETRIC PRESSURE SETTING"))
+                    QNH_standard = 1013.2
+                    if float(flight_level) < 60:
+                        if 1013<= QNH_actual <= 1013.3:
+                            new_csv_line = new_csv_line.replace("MODE C corrected", "")
+                        else:
+                            altitude_in_feet_corrected = float((flight_level)*100) + (QNH_actual - QNH_standard) * 30
+                            altitude_in_feet_corrected = round(altitude_in_feet_corrected,2)
+                    new_csv_line = new_csv_line.replace("MODE C corrected", str(altitude_in_feet_corrected))
+                else:
+                    new_csv_line = new_csv_line.replace("MODE C corrected", "")
+            except ValueError:
+                new_csv_line = new_csv_line.replace("MODE C corrected", "")
+
             # 11 Data Item 161 Track Number
             if fspec[10]:
                 try:
@@ -1257,17 +1288,17 @@ def convert_to_csv(input_file):
                 )
             # 16 Data Item 030 Warning/Error Conditions/Target Classification Not needed
             if fspec[15]:
-                for i, octet in enumerate(remaining_line):
+                for j, octet in enumerate(remaining_line):
                     removed_octets += octet + " "
                 # If the last bit is 0, stop reading
                 if octet[7] == "0":
                     unused_octets = remaining_line[
-                        i + 1 :
+                        j + 1 :
                     ]  # Store remaining unread octets
                 try:
                     remaining_line = unused_octets
                 except UnboundLocalError:
-                    print("Not enough octets to process Data Item 030")
+                    print("Not enough octets to process Data Item 030 in line "+str(i))
             # 17 Data Item 080 Mode 3A Code Confidence Indicator Not needed
             if fspec[16]:
                 removed_octets = remaining_line.pop(0) + " " + remaining_line.pop(0)
@@ -1321,7 +1352,7 @@ def convert_to_csv(input_file):
                             removed_octets += extension_octet + " "
                             # Stop reading if the last bit (FX) is 0
                             if extension_octet[7] == "0":
-                                break
+                                print("Last bit is 0, stopping reading")
 
                 except IndexError:
                     print("Not enough octets to process Data Item 120")
@@ -1340,12 +1371,12 @@ def convert_to_csv(input_file):
             csv_lines.append(new_csv_line)
             i = i + 1
         except IndexError:
-            pass
+            print("Not enough octets to process line "+str(i))
     # Write the CSV lines to a file if needed
     with open("output.csv", "w") as csv_file:
         csv_file.write("\n".join(csv_lines))
 
 
-# Missing to insert the latitude longitude and height at the position expected in csv, also missing mode c?
+# Missing to insert the latitude longitude and height at the position expected in csv?
 
 convert_to_csv("assets/test.ast")

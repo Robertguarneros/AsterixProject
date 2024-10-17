@@ -139,6 +139,8 @@ class CSVTableDialog(QDialog):
                     if progress_dialog:
                         progress_dialog.set_progress(progress_value)
                     QApplication.processEvents()
+                # Resize columns to fit content
+                self.table_widget.resizeColumnsToContents()
 
                 # Resize columns to fit content
                 self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
