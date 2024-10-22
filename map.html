@@ -60,9 +60,16 @@
         }
 
         function findAircraftByTi(ti) {
-            // Retorna el marcador almacenado en el mapa, si existe
             return aircraftMarkers[ti];
         }
+
+        function clearAircraft() {
+            for (const ti in aircraftMarkers) {
+                map.removeLayer(aircraftMarkers[ti]);
+            }
+            aircraftMarkers = {};
+        }
+
     </script>
 </body>
 </html>

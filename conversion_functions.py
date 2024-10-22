@@ -129,7 +129,7 @@ def get_time_of_day(message):
     time_of_day = int(time_of_day_bin, 2)
 
     # Convertimos de unidades de 1/128 segundos a segundos reales
-    total_seconds = time_of_day / 128
+    total_seconds = round(time_of_day / 128)
 
     # Calculamos horas, minutos y segundos
     hours = int(total_seconds // 3600)

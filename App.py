@@ -10,7 +10,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QWidget, QTableWidget, QTableWidgetItem,
     QFileDialog, QAction, QDialog, QHeaderView, QProgressBar, QComboBox, QPushButton,
-    QHBoxLayout, QLabel
+    QHBoxLayout, QLabel, QMenu, QActionGroup, QSlider, QMessageBox
 )
 
 class ProgressDialog(QDialog):
@@ -189,6 +189,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Asterix Decoder")
 
         self.aircraft_data_by_time = {}
+        self.selected_speed = 1  # Store selected speed; default is 1x
 
         # Create a central widget
         central_widget = QWidget(self)
@@ -235,20 +236,90 @@ class MainWindow(QMainWindow):
 
         # Placeholder for the aircraft data and simulation index
         self.aircraft_data = []
-        self.is_paused = False
+
+        self.control_layout = QHBoxLayout()
         
         # Create a single button for Play/Pause functionality
         self.play_pause_button = QPushButton()
         self.play_pause_button.setText("Play")  # Set initial text to "Play"
         self.play_pause_button.clicked.connect(self.toggle_simulation)
-        self.play_pause_button.setVisible(False)  # Initially hidden
+        self.control_layout.addWidget(self.play_pause_button)  # Add the button to the layout
 
-        layout.addWidget(self.play_pause_button)  # Add the button to the layout
+        # Create a single button for Play/Pause functionality
+        self.reset_button = QPushButton()
+        self.reset_button.setText("Reset")  # Set initial text to "Play"
+        self.reset_button.clicked.connect(self.reset_simulation)
+        self.control_layout.addWidget(self.reset_button)  # Add the button to the layout
+
+        # Create a button for Speed selection
+        self.speed_button = QPushButton("Speed")
+        self.speed_button.setMenu(self.create_speed_menu())
+        self.control_layout.addWidget(self.speed_button)  # Add the button to the layout
+
+        
+        self.time_label = QLabel(" ", self)  # Inicializar el label con el tiempo en 0
+        self.control_layout.addWidget(self.time_label)
+
+        # Add a progress bar for the simulation
+        self.progress_bar = QSlider(Qt.Horizontal)
+        self.progress_bar.valueChanged.connect(self.seek_simulation)
+        self.control_layout.addWidget(self.progress_bar)
+
+        layout.addLayout(self.control_layout)
+        for i in range(self.control_layout.count()):
+            self.control_layout.itemAt(i).widget().setVisible(False)
+
 
 
     def show_play_pause_buttons(self):
         """Shows the Play/Pause button once the CSV is loaded."""
-        self.play_pause_button.setVisible(True)
+        for i in range(self.control_layout.count()):
+            self.control_layout.itemAt(i).widget().setVisible(True)
+
+
+    def seek_simulation(self, value):
+        """Busca un tiempo específico en la simulación basado en el valor del slider."""
+        self.current_time = value 
+        self.time_label.setText(self.seconds_to_hhmmss(value))  # Actualiza el QLabel con el tiempo actual
+
+
+    def create_speed_menu(self):
+        speed_menu = QMenu(self)
+        speed_group = QActionGroup(self)  # Create an action group for the speed options
+
+        # Define speed options
+        speeds = [("x0.5", 0.5), ("x1", 1), ("x2", 2), ("x4", 4), ("x8", 8)]
+        
+        for label, value in speeds:
+            action = QAction(label, self, checkable=True)
+            action.setChecked(value == self.selected_speed)  # Check the selected speed
+            action.triggered.connect(lambda checked, v=value: self.set_speed(v))  # Bind speed setting
+            speed_group.addAction(action)  # Add to the action group
+            speed_menu.addAction(action)
+
+        return speed_menu
+ 
+    def set_speed(self, speed):
+        """Sets the selected speed for the simulation."""
+        self.selected_speed = speed  # Update the stored speed
+
+        # Update the speed button text to reflect the current selection
+        self.speed_button.setText(f"Speed: {speed}x")
+
+        # Optionally, update the simulation timer interval if running
+        if self.timer.isActive():
+            self.timer.stop()
+            interval = int(1000 / self.selected_speed)  
+            self.timer.start(interval)   
+  
+
+    def reset_simulation(self):
+        self.current_time = int(min(self.aircraft_data_by_time.keys()))
+        self.current_index = 0  # Reset the index
+        self.time_label.setText(self.seconds_to_hhmmss(self.current_time))
+        self.progress_bar.setValue(self.current_time)  # Initial value
+
+        self.web_view.page().runJavaScript(f"clearAircraft()")
 
 
     def toggle_simulation(self):
@@ -259,6 +330,14 @@ class MainWindow(QMainWindow):
         else:
             # Pause the simulation
             self.toggle_pause()
+
+    
+    def seconds_to_hhmmss(self, seconds):
+        """Convert seconds to hh:mm:ss format."""
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        remaining_seconds = seconds % 60
+        return f"{hours:02}:{minutes:02}:{remaining_seconds:02}"
 
 
     def start_simulation(self):
@@ -276,8 +355,8 @@ class MainWindow(QMainWindow):
 
         if not self.timer.isActive():
             # Start the timer only if it is not already active
-            self.timer.start(1000)  # Start updating every second
-            
+            interval = int(1000 / self.selected_speed)  
+            self.timer.start(interval)               
         # Change the button text and icon to "Pause"
         self.play_pause_button.setText("Pause")
 
@@ -288,7 +367,8 @@ class MainWindow(QMainWindow):
             self.timer.stop()
             self.play_pause_button.setText("Play")
         else:
-            self.timer.start(1000)  # Resume updating every second
+            interval = int(1000 / self.selected_speed)  
+            self.timer.start(interval)   
             self.play_pause_button.setText("Pause")
 
 
@@ -308,11 +388,15 @@ class MainWindow(QMainWindow):
                 heading = aircraft["heading"]
                 
                 self.web_view.page().runJavaScript(f"updateAircraft('{ti}', {latitude}, {longitude}, {heading});")
+                
+            self.time_label.setText(self.seconds_to_hhmmss(self.current_time))  # Actualiza el QLabel con el tiempo actual
 
-        
         # Find the next time step in the data
         all_times = sorted(map(int, self.aircraft_data_by_time.keys()))
         current_index = all_times.index(self.current_time)
+
+        self.progress_bar.setValue(self.current_time)  # Set the slider to current time
+
 
         if current_index < len(all_times) - 1:
             next_time = all_times[current_index + 1]
@@ -321,12 +405,16 @@ class MainWindow(QMainWindow):
             time_difference = next_time - self.current_time
                 
             # Set the next update based on the time difference
-            self.timer.start(time_difference * 1000)  # Multiply by 1000 to convert to milliseconds
+            interval = int(1000 / self.selected_speed)  
+            self.timer.start(time_difference * interval)  # Adjust to speed
                 
             # Update current time to next time
             self.current_time = next_time
         else:
             self.timer.stop()  # Stop the simulation when the last time step is reached
+            QMessageBox.information(self, "Simulation Ended", "The simulation has completed.")
+            self.reset_simulation()
+            self.play_pause_button.setText("Play")
 
 
     def open_csv_table(self):
@@ -343,6 +431,13 @@ class MainWindow(QMainWindow):
             self.aircraft_data = dialog.aircraft_data  # Store aircraft data for simulation
 
             self.aircraft_data_by_time = dialog.aircraft_data_by_time  # Actualiza los datos en MainWindow
+
+            if self.aircraft_data_by_time:
+                min_time = int(min(self.aircraft_data_by_time.keys()))
+                max_time = int(max(self.aircraft_data_by_time.keys()))
+                self.progress_bar.setRange(min_time, max_time)  # Ajustar rango del slider
+                self.progress_bar.setValue(min_time)  # Initial value
+
             
             self.show_play_pause_buttons()
 
