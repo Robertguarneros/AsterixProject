@@ -110,6 +110,7 @@ class CSVTableDialog(QDialog):
                 lat_idx = headers.index("LAT")
                 lon_idx = headers.index("LON")
                 ti_idx = headers.index("TI")
+                h_idx = headers.index("H")
                 heading_idx = headers.index("HEADING")
 
                 # Dictionary to store aircraft data grouped by time
@@ -123,6 +124,7 @@ class CSVTableDialog(QDialog):
                         'lat': float(row_data[lat_idx].replace(',', '.')),
                         'lon': float(row_data[lon_idx].replace(',', '.')),
                         'ti': row_data[ti_idx],
+                        'h': float(row_data[h_idx].replace(',', '.')),
                         'heading': float(row_data[heading_idx].replace(',', '.'))
                     }
                     # Group aircraft by time
@@ -279,8 +281,41 @@ class MainWindow(QMainWindow):
 
     def seek_simulation(self, value):
         """Busca un tiempo específico en la simulación basado en el valor del slider."""
-        self.current_time = value 
-        self.time_label.setText(self.seconds_to_hhmmss(value))  # Actualiza el QLabel con el tiempo actual
+        self.current_time = value
+        if self.current_time == int(min(self.aircraft_data_by_time.keys())):
+            self.web_view.page().runJavaScript(f"clearAircraft()")
+
+        self.time_label.setText(self.seconds_to_hhmmss(value))  
+
+        self.update_aircraft_positions_before_current_time()
+ 
+
+    def update_aircraft_positions_before_current_time(self):
+        """Actualiza las posiciones de todas las aeronaves al último punto conocido antes del current_time."""
+        all_times = sorted(map(int, self.aircraft_data_by_time.keys()))
+
+        for aircraft in self.aircraft_data:
+            ti = aircraft['ti']
+            
+            last_position = None
+            
+            # Buscar la última posición registrada para el avión antes del current_time
+            for time in reversed(all_times):
+                if time < self.current_time:
+                    aircraft_list = self.aircraft_data_by_time.get(str(time), [])
+                    for a in aircraft_list:
+                        if a['ti'] == ti:
+                            last_position = a
+                            break
+                if last_position is not None:
+                    break
+            
+            if last_position:
+                latitude = last_position['lat']
+                longitude = last_position['lon']
+                altitude = last_position['h']
+                heading = last_position['heading']
+                self.web_view.page().runJavaScript(f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});")
 
 
     def create_speed_menu(self):
@@ -385,9 +420,11 @@ class MainWindow(QMainWindow):
                 latitude = aircraft["lat"]
                 longitude = aircraft["lon"]
                 ti = aircraft["ti"]
+                altitude = aircraft["h"]
                 heading = aircraft["heading"]
-                
-                self.web_view.page().runJavaScript(f"updateAircraft('{ti}', {latitude}, {longitude}, {heading});")
+
+                if ti != "N/A":
+                    self.web_view.page().runJavaScript(f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});")
                 
             self.time_label.setText(self.seconds_to_hhmmss(self.current_time))  # Actualiza el QLabel con el tiempo actual
 

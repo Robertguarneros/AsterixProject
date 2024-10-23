@@ -34,17 +34,18 @@
 
         var aircraftMarkers = {};
 
-        function addAircraft(latitude, longitude, ti, heading) {
+        function addAircraft(latitude, longitude, ti, altitude, heading) {
             var marker = L.marker([latitude, longitude], { icon: createAirplaneIcon(heading) }).addTo(map);
-            marker.bindPopup("TI: " + ti + "<br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Heading: " + heading);
+            marker.bindPopup("TI: " + ti + "<br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);
             marker.on('click', function () {
                 marker.openPopup();
             });
 
             aircraftMarkers[ti] = marker;
         }
+        
 
-        function updateAircraft(ti, latitude, longitude, heading) {
+        function updateAircraft(ti, latitude, longitude, altitude, heading) {
             // Locate the aircraft by TI and update its position on the map
             var marker = findAircraftByTi(ti);
             if (marker) {
@@ -52,10 +53,10 @@
                 marker.setLatLng([latitude, longitude]);
                 // Update the marker's icon with the new heading
                 marker.setIcon(createAirplaneIcon(heading));
-                marker.bindPopup("TI: " + ti + "<br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Heading: " + heading);  // Update popup
+                marker.bindPopup("TI: " + ti + "<br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);  // Update popup
             } else {
                 // If the aircraft doesn't exist, add it
-                addAircraft(latitude, longitude, ti, heading);
+                addAircraft(latitude, longitude, ti, altitude, heading);
             }
         }
 
@@ -69,7 +70,6 @@
             }
             aircraftMarkers = {};
         }
-
     </script>
 </body>
 </html>
