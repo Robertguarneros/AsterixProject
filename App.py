@@ -50,6 +50,9 @@ class CSVTableDialog(QDialog):
         # Create table widget
         self.table_widget = QTableWidget()
 
+        # Lista para almacenar los filtros aplicados
+        self.applied_filters = []
+
         # Create "Start Simulation" button, hidden by default
         self.start_simulation_button = QPushButton("Start Simulation")
         self.start_simulation_button.setVisible(False)
@@ -57,6 +60,7 @@ class CSVTableDialog(QDialog):
 
         # Filter options
         self.filter_combobox = QComboBox()
+        self.filter_combobox.addItem("Active Filters: None")  # Estado inicial
         self.filter_combobox.addItem("No Filter")
         self.filter_combobox.addItem("Remove Blancos Puros")
         self.filter_combobox.addItem("Remove Fixed Transponder")
@@ -80,6 +84,8 @@ class CSVTableDialog(QDialog):
 
         # Load CSV data with a progress dialog
         self.load_csv_data(csv_file_path, progress_dialog)
+        self.currently_visible_rows = set(range(self.table_widget.rowCount()))  # Todas las filas visibles al inicio
+
 
         # Allow window to be maximized with a system maximize button
         self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint)
@@ -167,21 +173,87 @@ class CSVTableDialog(QDialog):
             self.filter_by_area()
         elif selected_filter == "Remove On Ground Flights":
             self.filter_on_ground()
+        elif selected_filter == "No Filter":
+            self.reset_filters()
+
+        # Aplicar solo si el filtro no ha sido ya activado
+        if selected_filter not in self.applied_filters:
+            self.applied_filters.append(selected_filter)
+
+        # Actualizar el QLabel que muestra los filtros aplicados
+        self.update_active_filters_label()
+    
+    def update_active_filters_label(self):
+        """Updates the label that shows the active filters."""
+        # Texto a mostrar
+        if 'reset_filter' in self.applied_filters:
+            text = "Active Filters: None"
+        else:
+            text = f"Active Filters: {', '.join(self.applied_filters)}" 
+
+        if self.filter_combobox.itemText(0) != text:
+            self.filter_combobox.setItemText(0, text) 
 
     def filter_blancos_puros(self):
-        """Filters out 'blancos puros' based on the type of interrogation."""
+        """Filters out rows that represent 'blancos puros', i.e., detections from PSR or SSR without Modo S."""
+        detection_type_col_idx = 8  # Columna 9
 
+        for row in range(self.table_widget.rowCount()):
+            if row in self.currently_visible_rows:
+                detection_type = self.table_widget.item(row, detection_type_col_idx).text()
+                if "ModeS" not in detection_type:
+                    self.table_widget.setRowHidden(row, True)
+                    self.currently_visible_rows.discard(row)
 
     def filter_fixed_transponder(self):
-        """Filters out rows where the transponder is fixed."""
+        """Filters out rows where the transponder (column 24) is fixed for the same aircraft (columns 36 and 37)."""
+        transponder_data = {}
 
+        for row in range(self.table_widget.rowCount()):
+            if row in self.currently_visible_rows:
+                icao24 = self.table_widget.item(row, 36).text()
+                flight_id = self.table_widget.item(row, 37).text()
+                aircraft_key = (icao24, flight_id)
+                transponder_value = self.table_widget.item(row, 24).text()
+
+                if aircraft_key not in transponder_data:
+                    transponder_data[aircraft_key] = set()
+
+                transponder_data[aircraft_key].add(transponder_value)
+
+        for row in range(self.table_widget.rowCount()):
+            if row in self.currently_visible_rows:
+                icao24 = self.table_widget.item(row, 36).text()
+                flight_id = self.table_widget.item(row, 37).text()
+                aircraft_key = (icao24, flight_id)
+
+                if len(transponder_data[aircraft_key]) == 1 or "7777" in transponder_data[aircraft_key]:
+                    self.table_widget.setRowHidden(row, True)
+                    self.currently_visible_rows.discard(row)
+
+    def filter_on_ground(self):
+        """Filters out rows where the flight is 'on ground'."""
+        ground_status_col_idx = 70  # Columna 71
+
+        for row in range(self.table_widget.rowCount()):
+            if row in self.currently_visible_rows:
+                item = self.table_widget.item(row, ground_status_col_idx)
+                if item and item.text() == "No alert, no SPI, aircraft on ground":
+                    self.table_widget.setRowHidden(row, True)
+                    self.currently_visible_rows.discard(row)
 
     def filter_by_area(self):
         """Filters flights based on geographic area (latitude and longitude)."""
 
-
-    def filter_on_ground(self):
-        """Filters out rows where the flight is 'on ground'."""
+    def reset_filters(self):
+        """Resets all filters and shows all rows in the table."""
+        for row in range(self.table_widget.rowCount()):
+            self.table_widget.setRowHidden(row, False)
+        
+        self.currently_visible_rows = set(range(self.table_widget.rowCount()))  # Comienza en 0
+        
+        self.applied_filters.clear()  # Limpiar filtros aplicados
+        #self.update_active_filters_label()  # Actualizar la etiqueta de filtros aplicados
 
 
 
