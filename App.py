@@ -60,13 +60,18 @@ class CSVTableDialog(QDialog):
 
         # Filter options
         self.filter_combobox = QComboBox()
-        self.filter_combobox.addItem("Active Filters: None")  # Estado inicial
+        self.filter_combobox.setEditable(False)  # No se puede editar el texto
+        self.filter_combobox.addItem("Active Filters: None")  # Cabecera que mostrará filtros activos
+        self.filter_combobox.model().item(0).setEnabled(False)  # Deshabilitar primera opción (cabecera)
+
+        # Opciones de filtro
         self.filter_combobox.addItem("No Filter")
         self.filter_combobox.addItem("Remove Blancos Puros")
         self.filter_combobox.addItem("Remove Fixed Transponder")
         self.filter_combobox.addItem("Filter by Area (Lat/Long)")
         self.filter_combobox.addItem("Remove On Ground Flights")
 
+        # Botón de aplicar filtros
         self.apply_filter_button = QPushButton("Apply Filter")
         self.apply_filter_button.clicked.connect(self.apply_filters)
 
@@ -89,7 +94,6 @@ class CSVTableDialog(QDialog):
 
         # Allow window to be maximized with a system maximize button
         self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint)
-
         self.setWindowModality(Qt.NonModal)  # Para que no bloquee la ventana principal
         self.setWindowFlags(self.windowFlags() | Qt.WindowMinimizeButtonHint)  # Permitir minimizar
 
@@ -160,11 +164,15 @@ class CSVTableDialog(QDialog):
             # Close the dialog when done
             progress_dialog.accept()  # Close the dialog here
 
-
     def apply_filters(self):
         """Applies filters based on the selected option in the combobox."""
         selected_filter = self.filter_combobox.currentText()
         
+        # Si no se ha seleccionado un filtro válido, no realizar ninguna acción
+        if "Active Filters" in selected_filter:
+            return  # Salir de la función si el texto contiene "Active Filters"
+        
+        # Aplicar el filtro seleccionado
         if selected_filter == "Remove Blancos Puros":
             self.filter_blancos_puros()
         elif selected_filter == "Remove Fixed Transponder":
@@ -176,25 +184,27 @@ class CSVTableDialog(QDialog):
         elif selected_filter == "No Filter":
             self.reset_filters()
 
-        # Aplicar solo si el filtro no ha sido ya activado
-        if selected_filter not in self.applied_filters:
+        # Añadir el filtro a la lista si no ha sido activado previamente
+        if selected_filter not in self.applied_filters and selected_filter != "No Filter":
             self.applied_filters.append(selected_filter)
 
-        # Actualizar el QLabel que muestra los filtros aplicados
+        # Actualizar el texto de la cabecera para mostrar los filtros activos
         self.update_active_filters_label()
-    
+
+        # Seleccionar automáticamente el primer elemento (cabecera) del combobox
+        self.filter_combobox.setCurrentIndex(0)
+
     def update_active_filters_label(self):
-        """Updates the label that shows the active filters."""
-        # Texto a mostrar
-        if 'reset_filter' in self.applied_filters:
-            text = "Active Filters: None"
+        """Updates the combobox header to show active filters."""
+        if not self.applied_filters:
+            header_text = "Active Filters: None"
         else:
-            text = f"Active Filters: {', '.join(self.applied_filters)}" 
+            header_text = f"Active Filters: {', '.join(self.applied_filters)}"
 
-        if self.filter_combobox.itemText(0) != text:
-            self.filter_combobox.setItemText(0, text) 
+        # Cambiar el texto de la cabecera en el primer elemento del QComboBox
+        self.filter_combobox.setItemText(0, header_text)
 
-    def filter_blancos_puros(self):
+    def filter_blancos_puros(self): # EN UN PRINCIPIO TODO PIOLA
         """Filters out rows that represent 'blancos puros', i.e., detections from PSR or SSR without Modo S."""
         detection_type_col_idx = 8  # Columna 9
 
@@ -205,44 +215,36 @@ class CSVTableDialog(QDialog):
                     self.table_widget.setRowHidden(row, True)
                     self.currently_visible_rows.discard(row)
 
-    def filter_fixed_transponder(self):
-        """Filters out rows where the transponder (column 24) is fixed for the same aircraft (columns 36 and 37)."""
-        transponder_data = {}
-
+    def filter_fixed_transponder(self):  # FILTRAR SOLO LOS 7777
+        """Filters out rows where the transponder (column 24) has a value of '7777' for the same aircraft (columns 36 and 37)."""
         for row in range(self.table_widget.rowCount()):
             if row in self.currently_visible_rows:
-                icao24 = self.table_widget.item(row, 36).text()
-                flight_id = self.table_widget.item(row, 37).text()
-                aircraft_key = (icao24, flight_id)
                 transponder_value = self.table_widget.item(row, 24).text()
-
-                if aircraft_key not in transponder_data:
-                    transponder_data[aircraft_key] = set()
-
-                transponder_data[aircraft_key].add(transponder_value)
-
-        for row in range(self.table_widget.rowCount()):
-            if row in self.currently_visible_rows:
-                icao24 = self.table_widget.item(row, 36).text()
-                flight_id = self.table_widget.item(row, 37).text()
-                aircraft_key = (icao24, flight_id)
-
-                if len(transponder_data[aircraft_key]) == 1 or "7777" in transponder_data[aircraft_key]:
+                
+                # Ocultar solo las filas donde el transponder es '7777'
+                if transponder_value == "7777":
                     self.table_widget.setRowHidden(row, True)
                     self.currently_visible_rows.discard(row)
 
-    def filter_on_ground(self):
-        """Filters out rows where the flight is 'on ground'."""
+    def filter_on_ground(self):  # FILTRAR TAMBIÉN LOS N/A, NOT ASSIGNED
+        """Filters out rows where the flight is 'on ground' or has statuses like 'N/A' or 'Not assigned'."""
         ground_status_col_idx = 70  # Columna 71
+        filter_texts = [
+            "No alert, no SPI, aircraft on ground",
+            "N/A",
+            "Not assigned",
+            "Alert, no SPI, aircraft on ground"
+            "Unknow"
+        ]
 
         for row in range(self.table_widget.rowCount()):
             if row in self.currently_visible_rows:
                 item = self.table_widget.item(row, ground_status_col_idx)
-                if item and item.text() == "No alert, no SPI, aircraft on ground":
+                if item and item.text() in filter_texts:
                     self.table_widget.setRowHidden(row, True)
                     self.currently_visible_rows.discard(row)
 
-    def filter_by_area(self):
+    def filter_by_area(self): # AL APLICAR FILTRO Q PREGUNTE 2 LATITUDES Y 2 LONGITUDES PARA CONSTRUIR UN CUADRADO
         """Filters flights based on geographic area (latitude and longitude)."""
 
     def reset_filters(self):
@@ -254,7 +256,6 @@ class CSVTableDialog(QDialog):
         
         self.applied_filters.clear()  # Limpiar filtros aplicados
         #self.update_active_filters_label()  # Actualizar la etiqueta de filtros aplicados
-
 
 
 class MainWindow(QMainWindow):
