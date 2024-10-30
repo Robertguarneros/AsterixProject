@@ -100,6 +100,25 @@ class CSVTableDialog(QDialog):
         # Show the dialog in a normal windowed mode, user can maximize it
         self.showMaximized()
 
+    def add_search_fields(self):
+        """Adds a search field for each column in the table."""
+        # Crear una barra de búsqueda para cada columna
+        for col in range(self.table_widget.columnCount()):
+            search_field = QLineEdit()
+            search_field.setPlaceholderText(f"Search in {self.table_widget.horizontalHeaderItem(col).text()}")
+            search_field.textChanged.connect(lambda text, col=col: self.filter_column(text, col))
+            self.search_layout.addWidget(search_field)
+            self.column_filters.append(search_field)
+
+    def filter_column(self, text, column):
+        """Filters rows based on the text in a specific column's search field."""
+        for row in range(self.table_widget.rowCount()):
+            item = self.table_widget.item(row, column)
+            if text.lower() in item.text().lower():
+                self.table_widget.setRowHidden(row, False)  # Mostrar si coincide
+            else:
+                self.table_widget.setRowHidden(row, True)  # Ocultar si no coincide
+
     def load_csv_data(self, csv_file_path, progress_dialog):
         """Loads data from the CSV file and displays it in the table."""
         with open(csv_file_path, newline='') as csvfile:
@@ -215,16 +234,15 @@ class CSVTableDialog(QDialog):
                     self.table_widget.setRowHidden(row, True)
                     self.currently_visible_rows.discard(row)
 
-    def filter_fixed_transponder(self):  # FILTRAR SOLO LOS 7777
-        """Filters out rows where the transponder (column 24) has a value of '7777' for the same aircraft (columns 36 and 37)."""
+    def filter_fixed_transponder(self):
+        """Oculta filas donde el valor de la columna 24 es '7777'"""
         for row in range(self.table_widget.rowCount()):
-            if row in self.currently_visible_rows:
-                transponder_value = self.table_widget.item(row, 24).text()
-                
-                # Ocultar solo las filas donde el transponder es '7777'
-                if transponder_value == "7777":
-                    self.table_widget.setRowHidden(row, True)
-                    self.currently_visible_rows.discard(row)
+            transponder_value = self.table_widget.item(row, 23).text()
+            
+            # Ocultar fila si el valor de transponder es '7777'
+            if transponder_value == "7777":
+                self.table_widget.setRowHidden(row, True)
+
 
     def filter_on_ground(self):  # FILTRAR TAMBIÉN LOS N/A, NOT ASSIGNED
         """Filters out rows where the flight is 'on ground' or has statuses like 'N/A' or 'Not assigned'."""
