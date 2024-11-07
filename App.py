@@ -10,7 +10,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QWidget, QTableWidget, QTableWidgetItem,
     QFileDialog, QAction, QDialog, QHeaderView, QProgressBar, QComboBox, QPushButton,
-    QHBoxLayout, QLabel, QMenu, QActionGroup, QSlider, QMessageBox
+    QHBoxLayout, QLabel, QMenu, QActionGroup, QSlider, QMessageBox, QLineEdit
 )
 
 class ProgressDialog(QDialog):
@@ -53,6 +53,29 @@ class CSVTableDialog(QDialog):
         # Lista para almacenar los filtros aplicados
         self.applied_filters = []
 
+        # Campos de entrada para latitudes y longitudes
+        self.lat_min_input = QLineEdit()
+        self.lat_max_input = QLineEdit()
+        self.lon_min_input = QLineEdit()
+        self.lon_max_input = QLineEdit()
+        
+        self.lat_min_input.setPlaceholderText("Lat Min")
+        self.lat_max_input.setPlaceholderText("Lat Max")
+        self.lon_min_input.setPlaceholderText("Lon Min")
+        self.lon_max_input.setPlaceholderText("Lon Max")
+
+        # Botón para aplicar filtro de área
+        self.apply_area_filter_button = QPushButton("Apply Area Filter")
+        self.apply_area_filter_button.clicked.connect(self.apply_area_filter)
+
+        # Botón para deshacer el filtro de área
+        self.reset_area_filter_button = QPushButton("Reset Area Filter")
+        self.reset_area_filter_button.clicked.connect(self.reset_area_filter)
+
+        # Etiqueta para mostrar las coordenadas del filtro activo
+        self.active_area_filter_label = QLabel("Active Area Filter: None")
+
+
         # Create "Start Simulation" button, hidden by default
         self.start_simulation_button = QPushButton("Start Simulation")
         self.start_simulation_button.setVisible(False)
@@ -68,7 +91,6 @@ class CSVTableDialog(QDialog):
         self.filter_combobox.addItem("No Filter")
         self.filter_combobox.addItem("Remove Blancos Puros")
         self.filter_combobox.addItem("Remove Fixed Transponder")
-        self.filter_combobox.addItem("Filter by Area (Lat/Long)")
         self.filter_combobox.addItem("Remove On Ground Flights")
 
         # Botón de aplicar filtros
@@ -87,37 +109,36 @@ class CSVTableDialog(QDialog):
         layout.addWidget(self.start_simulation_button) 
         self.setLayout(layout)
 
+        # Filtros de área en el layout horizontal
+        area_filter_layout = QHBoxLayout()
+        area_filter_layout.addWidget(QLabel("Latitude Range:"))
+        area_filter_layout.addWidget(self.lat_min_input)
+        area_filter_layout.addWidget(self.lat_max_input)
+        area_filter_layout.addWidget(QLabel("Longitude Range:"))
+        area_filter_layout.addWidget(self.lon_min_input)
+        area_filter_layout.addWidget(self.lon_max_input)
+        area_filter_layout.addWidget(self.apply_area_filter_button)
+        area_filter_layout.addWidget(self.reset_area_filter_button)
+
+        # Añadir los layouts al layout principal
+        layout.addLayout(area_filter_layout)
+        layout.addWidget(self.active_area_filter_label)
+
+        # Sets to track rows hidden by area filter and other filters
+        self.area_hidden_rows = set()
+        self.other_filters_hidden_rows = set()
+        
         # Load CSV data with a progress dialog
         self.load_csv_data(csv_file_path, progress_dialog)
         self.currently_visible_rows = set(range(self.table_widget.rowCount()))  # Todas las filas visibles al inicio
 
 
         # Allow window to be maximized with a system maximize button
-        self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint | Qt.WindowMinimizeButtonHint)
         self.setWindowModality(Qt.NonModal)  # Para que no bloquee la ventana principal
-        self.setWindowFlags(self.windowFlags() | Qt.WindowMinimizeButtonHint)  # Permitir minimizar
 
         # Show the dialog in a normal windowed mode, user can maximize it
         self.showMaximized()
-
-    def add_search_fields(self):
-        """Adds a search field for each column in the table."""
-        # Crear una barra de búsqueda para cada columna
-        for col in range(self.table_widget.columnCount()):
-            search_field = QLineEdit()
-            search_field.setPlaceholderText(f"Search in {self.table_widget.horizontalHeaderItem(col).text()}")
-            search_field.textChanged.connect(lambda text, col=col: self.filter_column(text, col))
-            self.search_layout.addWidget(search_field)
-            self.column_filters.append(search_field)
-
-    def filter_column(self, text, column):
-        """Filters rows based on the text in a specific column's search field."""
-        for row in range(self.table_widget.rowCount()):
-            item = self.table_widget.item(row, column)
-            if text.lower() in item.text().lower():
-                self.table_widget.setRowHidden(row, False)  # Mostrar si coincide
-            else:
-                self.table_widget.setRowHidden(row, True)  # Ocultar si no coincide
 
     def load_csv_data(self, csv_file_path, progress_dialog):
         """Loads data from the CSV file and displays it in the table."""
@@ -186,31 +207,22 @@ class CSVTableDialog(QDialog):
     def apply_filters(self):
         """Applies filters based on the selected option in the combobox."""
         selected_filter = self.filter_combobox.currentText()
-        
-        # Si no se ha seleccionado un filtro válido, no realizar ninguna acción
         if "Active Filters" in selected_filter:
-            return  # Salir de la función si el texto contiene "Active Filters"
-        
-        # Aplicar el filtro seleccionado
+            return
+
         if selected_filter == "Remove Blancos Puros":
             self.filter_blancos_puros()
         elif selected_filter == "Remove Fixed Transponder":
             self.filter_fixed_transponder()
-        elif selected_filter == "Filter by Area (Lat/Long)":
-            self.filter_by_area()
         elif selected_filter == "Remove On Ground Flights":
             self.filter_on_ground()
         elif selected_filter == "No Filter":
-            self.reset_filters()
+            self.reset_other_filters()
 
-        # Añadir el filtro a la lista si no ha sido activado previamente
         if selected_filter not in self.applied_filters and selected_filter != "No Filter":
             self.applied_filters.append(selected_filter)
 
-        # Actualizar el texto de la cabecera para mostrar los filtros activos
         self.update_active_filters_label()
-
-        # Seleccionar automáticamente el primer elemento (cabecera) del combobox
         self.filter_combobox.setCurrentIndex(0)
 
     def update_active_filters_label(self):
@@ -223,57 +235,125 @@ class CSVTableDialog(QDialog):
         # Cambiar el texto de la cabecera en el primer elemento del QComboBox
         self.filter_combobox.setItemText(0, header_text)
 
-    def filter_blancos_puros(self): # EN UN PRINCIPIO TODO PIOLA
-        """Filters out rows that represent 'blancos puros', i.e., detections from PSR or SSR without Modo S."""
-        detection_type_col_idx = 8  # Columna 9
-
+    def filter_blancos_puros(self):
+        detection_type_col_idx = 8  # Índice de la columna de tipo de detección
         for row in range(self.table_widget.rowCount()):
             if row in self.currently_visible_rows:
                 detection_type = self.table_widget.item(row, detection_type_col_idx).text()
+                # Si "ModeS" no está en el tipo de detección, se oculta la fila
                 if "ModeS" not in detection_type:
-                    self.table_widget.setRowHidden(row, True)
-                    self.currently_visible_rows.discard(row)
+                    self.table_widget.setRowHidden(row, True)  # Ocultar fila
+                    self.other_filters_hidden_rows.add(row)   # Añadir a las filas ocultas
+                else:
+                    self.table_widget.setRowHidden(row, False)  # Mostrar fila
+                    self.other_filters_hidden_rows.discard(row)  # Eliminar de las filas ocultas
+
+        # Después de aplicar el filtro, actualizamos la visibilidad de las filas
+        self.update_row_visibility()
 
     def filter_fixed_transponder(self):
-        """Oculta filas donde el valor de la columna 24 es '7777'"""
         for row in range(self.table_widget.rowCount()):
             transponder_value = self.table_widget.item(row, 23).text()
-            
-            # Ocultar fila si el valor de transponder es '7777'
             if transponder_value == "7777":
-                self.table_widget.setRowHidden(row, True)
+                self.other_filters_hidden_rows.add(row)
+            else:
+                self.other_filters_hidden_rows.discard(row)
 
+        self.update_row_visibility()
 
-    def filter_on_ground(self):  # FILTRAR TAMBIÉN LOS N/A, NOT ASSIGNED
-        """Filters out rows where the flight is 'on ground' or has statuses like 'N/A' or 'Not assigned'."""
-        ground_status_col_idx = 70  # Columna 71
+    def filter_on_ground(self):
+        ground_status_col_idx = 70
         filter_texts = [
             "No alert, no SPI, aircraft on ground",
             "N/A",
             "Not assigned",
-            "Alert, no SPI, aircraft on ground"
+            "Alert, no SPI, aircraft on ground",
             "Unknow"
         ]
 
         for row in range(self.table_widget.rowCount()):
-            if row in self.currently_visible_rows:
-                item = self.table_widget.item(row, ground_status_col_idx)
-                if item and item.text() in filter_texts:
+            item = self.table_widget.item(row, ground_status_col_idx)
+            if item and item.text() in filter_texts:
+                self.other_filters_hidden_rows.add(row)
+            else:
+                self.other_filters_hidden_rows.discard(row)
+
+        self.update_row_visibility()
+
+    def update_row_visibility(self):
+        """Updates visibility of rows based on area and other filter sets."""
+        for row in range(self.table_widget.rowCount()):
+            if row in self.area_hidden_rows or row in self.other_filters_hidden_rows:
+                self.table_widget.setRowHidden(row, True)
+            else:
+                self.table_widget.setRowHidden(row, False)
+
+    def reset_other_filters(self):
+        """Resets only the non-area filters and updates the table visibility."""
+        self.other_filters_hidden_rows.clear()
+        self.update_row_visibility()
+        self.applied_filters.clear()
+        self.update_active_filters_label()
+
+    def apply_area_filter(self):
+        """Applies an area filter based on latitude and longitude range inputs."""
+        try:
+            # Get the latitude and longitude range from the input fields
+            lat_min = float(self.lat_min_input.text().replace(',', '.'))
+            lat_max = float(self.lat_max_input.text().replace(',', '.'))
+            lon_min = float(self.lon_min_input.text().replace(',', '.'))
+            lon_max = float(self.lon_max_input.text().replace(',', '.'))
+        except ValueError:
+            QMessageBox.warning(self, "Input Error", "Please enter valid numeric values for the coordinates.")
+            return  # Exit the function if the input is invalid
+
+        # Clear previous area filter status
+        self.currently_visible_rows = set(range(self.table_widget.rowCount()))
+        
+        for row in range(self.table_widget.rowCount()):
+            try:
+                # Use fixed column indices for latitude (5) and longitude (6)
+                lat_item = self.table_widget.item(row, 5)
+                lon_item = self.table_widget.item(row, 6)
+
+                if lat_item and lon_item:
+                    lat = float(lat_item.text().replace(',', '.'))
+                    lon = float(lon_item.text().replace(',', '.'))
+
+                    # Check if the coordinates fall within the specified range
+                    if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
+                        self.table_widget.setRowHidden(row, False)  # Show rows within the range
+                        self.currently_visible_rows.add(row)
+                    else:
+                        self.table_widget.setRowHidden(row, True)  # Hide rows outside the range
+                        self.currently_visible_rows.discard(row)
+                else:
+                    # Hide rows with missing latitude/longitude
                     self.table_widget.setRowHidden(row, True)
                     self.currently_visible_rows.discard(row)
 
-    def filter_by_area(self): # AL APLICAR FILTRO Q PREGUNTE 2 LATITUDES Y 2 LONGITUDES PARA CONSTRUIR UN CUADRADO
-        """Filters flights based on geographic area (latitude and longitude)."""
+            except ValueError:
+                # If conversion to float fails, hide the row
+                self.table_widget.setRowHidden(row, True)
+                self.currently_visible_rows.discard(row)
 
-    def reset_filters(self):
-        """Resets all filters and shows all rows in the table."""
-        for row in range(self.table_widget.rowCount()):
-            self.table_widget.setRowHidden(row, False)
-        
-        self.currently_visible_rows = set(range(self.table_widget.rowCount()))  # Comienza en 0
-        
-        self.applied_filters.clear()  # Limpiar filtros aplicados
-        #self.update_active_filters_label()  # Actualizar la etiqueta de filtros aplicados
+        # Update the active area filter label with a more descriptive format
+        self.active_area_filter_label.setText(
+            f"<b>Active Area Filter:</b><br>"
+            f"  • <b>Latitude Range:</b> Min {lat_min}° - Max {lat_max}°<br>"
+            f"  • <b>Longitude Range:</b> Min {lon_min}° - Max {lon_max}°"
+        )
+
+
+    def reset_area_filter(self):
+        """Resets only the area filter and updates the table visibility."""
+        self.area_hidden_rows.clear()
+        self.update_row_visibility()
+        self.active_area_filter_label.setText("Active Area Filter: None")
+        self.lat_min_input.clear()
+        self.lat_max_input.clear()
+        self.lon_min_input.clear()
+        self.lon_max_input.clear()
 
 
 class MainWindow(QMainWindow):
