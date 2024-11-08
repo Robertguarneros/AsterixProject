@@ -1,20 +1,41 @@
+import csv
 import ctypes
 import os
 import platform
 import sys
-import csv
 
-from PyQt5.QtCore import QUrl, Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QUrl
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QWidget, QTableWidget, QTableWidgetItem,
-    QFileDialog, QAction, QDialog, QHeaderView, QProgressBar, QComboBox, QPushButton,
-    QHBoxLayout, QLabel, QMenu, QActionGroup, QSlider, QMessageBox, QLineEdit
+    QAction,
+    QActionGroup,
+    QApplication,
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QSlider,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
+
+from conversion_functions import convert_to_csv
+
 
 class ProgressDialog(QDialog):
     """Dialog to show the progress of CSV loading."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Loading CSV Data")
@@ -38,8 +59,10 @@ class ProgressDialog(QDialog):
         """Updates the progress bar."""
         self.progress_bar.setValue(value)
 
+
 class CSVTableDialog(QDialog):
     """Dialog to show CSV data in a table with filtering capabilities."""
+
     def __init__(self, csv_file_path, parent=None, progress_dialog=None):
         super().__init__(parent)
         self.setWindowTitle("CSV Data")
@@ -58,7 +81,7 @@ class CSVTableDialog(QDialog):
         self.lat_max_input = QLineEdit()
         self.lon_min_input = QLineEdit()
         self.lon_max_input = QLineEdit()
-        
+
         self.lat_min_input.setPlaceholderText("Lat Min")
         self.lat_max_input.setPlaceholderText("Lat Max")
         self.lon_min_input.setPlaceholderText("Lon Min")
@@ -75,7 +98,6 @@ class CSVTableDialog(QDialog):
         # Etiqueta para mostrar las coordenadas del filtro activo
         self.active_area_filter_label = QLabel("Active Area Filter: None")
 
-
         # Create "Start Simulation" button, hidden by default
         self.start_simulation_button = QPushButton("Start Simulation")
         self.start_simulation_button.setVisible(False)
@@ -84,8 +106,12 @@ class CSVTableDialog(QDialog):
         # Filter options
         self.filter_combobox = QComboBox()
         self.filter_combobox.setEditable(False)  # No se puede editar el texto
-        self.filter_combobox.addItem("Active Filters: None")  # Cabecera que mostrará filtros activos
-        self.filter_combobox.model().item(0).setEnabled(False)  # Deshabilitar primera opción (cabecera)
+        self.filter_combobox.addItem(
+            "Active Filters: None"
+        )  # Cabecera que mostrará filtros activos
+        self.filter_combobox.model().item(0).setEnabled(
+            False
+        )  # Deshabilitar primera opción (cabecera)
 
         # Opciones de filtro
         self.filter_combobox.addItem("No Filter")
@@ -106,7 +132,7 @@ class CSVTableDialog(QDialog):
         layout = QVBoxLayout()
         layout.addLayout(filter_layout)
         layout.addWidget(self.table_widget)
-        layout.addWidget(self.start_simulation_button) 
+        layout.addWidget(self.start_simulation_button)
         self.setLayout(layout)
 
         # Filtros de área en el layout horizontal
@@ -127,14 +153,19 @@ class CSVTableDialog(QDialog):
         # Sets to track rows hidden by area filter and other filters
         self.area_hidden_rows = set()
         self.other_filters_hidden_rows = set()
-        
+
         # Load CSV data with a progress dialog
         self.load_csv_data(csv_file_path, progress_dialog)
-        self.currently_visible_rows = set(range(self.table_widget.rowCount()))  # Todas las filas visibles al inicio
-
+        self.currently_visible_rows = set(
+            range(self.table_widget.rowCount())
+        )  # Todas las filas visibles al inicio
 
         # Allow window to be maximized with a system maximize button
-        self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint | Qt.WindowMinimizeButtonHint)
+        self.setWindowFlags(
+            self.windowFlags()
+            | Qt.WindowMaximizeButtonHint
+            | Qt.WindowMinimizeButtonHint
+        )
         self.setWindowModality(Qt.NonModal)  # Para que no bloquee la ventana principal
 
         # Show the dialog in a normal windowed mode, user can maximize it
@@ -142,15 +173,17 @@ class CSVTableDialog(QDialog):
 
     def load_csv_data(self, csv_file_path, progress_dialog):
         """Loads data from the CSV file and displays it in the table."""
-        with open(csv_file_path, newline='') as csvfile:
-            reader = csv.reader(csvfile, delimiter=';')  # Specify ';' as the delimiter
+        with open(csv_file_path, newline="") as csvfile:
+            reader = csv.reader(csvfile, delimiter=";")  # Specify ';' as the delimiter
             data = list(reader)
             total_rows = len(data)
 
             if data:
                 # Set row and column count
                 self.table_widget.setRowCount(total_rows - 1)  # Exclude header
-                self.table_widget.setColumnCount(len(data[0]))  # Use first row to set column count
+                self.table_widget.setColumnCount(
+                    len(data[0])
+                )  # Use first row to set column count
 
                 # Set headers
                 headers = data[0]
@@ -168,23 +201,25 @@ class CSVTableDialog(QDialog):
 
                 # Populate table with data and update progress dialog
                 for row_idx, row_data in enumerate(data[1:]):  # Skip header
-                    
+
                     aircraft_info = {
-                        'time': row_data[time_idx],
-                        'lat': float(row_data[lat_idx].replace(',', '.')),
-                        'lon': float(row_data[lon_idx].replace(',', '.')),
-                        'ti': row_data[ti_idx],
-                        'h': float(row_data[h_idx].replace(',', '.')),
-                        'heading': float(row_data[heading_idx].replace(',', '.'))
+                        "time": row_data[time_idx],
+                        "lat": float(row_data[lat_idx].replace(",", ".")),
+                        "lon": float(row_data[lon_idx].replace(",", ".")),
+                        "ti": row_data[ti_idx],
+                        "h": float(row_data[h_idx].replace(",", ".")),
+                        "heading": float(row_data[heading_idx].replace(",", ".")),
                     }
                     # Group aircraft by time
-                    time = aircraft_info['time']
+                    time = aircraft_info["time"]
                     if time not in self.aircraft_data_by_time:
                         self.aircraft_data_by_time[time] = []
                     self.aircraft_data_by_time[time].append(aircraft_info)
 
                     for col_idx, cell_data in enumerate(row_data):
-                        self.table_widget.setItem(row_idx, col_idx, QTableWidgetItem(cell_data))
+                        self.table_widget.setItem(
+                            row_idx, col_idx, QTableWidgetItem(cell_data)
+                        )
 
                     # Update progress dialog
                     progress_value = int((row_idx / total_rows) * 100)
@@ -195,7 +230,9 @@ class CSVTableDialog(QDialog):
                 self.table_widget.resizeColumnsToContents()
 
                 # Resize columns to fit content
-                self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+                self.table_widget.horizontalHeader().setSectionResizeMode(
+                    QHeaderView.Interactive
+                )
                 self.parent().aircraft_data_by_time = self.aircraft_data_by_time
 
         # Set progress to 100% when done
@@ -219,7 +256,10 @@ class CSVTableDialog(QDialog):
         elif selected_filter == "No Filter":
             self.reset_other_filters()
 
-        if selected_filter not in self.applied_filters and selected_filter != "No Filter":
+        if (
+            selected_filter not in self.applied_filters
+            and selected_filter != "No Filter"
+        ):
             self.applied_filters.append(selected_filter)
 
         self.update_active_filters_label()
@@ -239,14 +279,20 @@ class CSVTableDialog(QDialog):
         detection_type_col_idx = 8  # Índice de la columna de tipo de detección
         for row in range(self.table_widget.rowCount()):
             if row in self.currently_visible_rows:
-                detection_type = self.table_widget.item(row, detection_type_col_idx).text()
+                detection_type = self.table_widget.item(
+                    row, detection_type_col_idx
+                ).text()
                 # Si "ModeS" no está en el tipo de detección, se oculta la fila
                 if "ModeS" not in detection_type:
                     self.table_widget.setRowHidden(row, True)  # Ocultar fila
-                    self.other_filters_hidden_rows.add(row)   # Añadir a las filas ocultas
+                    self.other_filters_hidden_rows.add(
+                        row
+                    )  # Añadir a las filas ocultas
                 else:
                     self.table_widget.setRowHidden(row, False)  # Mostrar fila
-                    self.other_filters_hidden_rows.discard(row)  # Eliminar de las filas ocultas
+                    self.other_filters_hidden_rows.discard(
+                        row
+                    )  # Eliminar de las filas ocultas
 
         # Después de aplicar el filtro, actualizamos la visibilidad de las filas
         self.update_row_visibility()
@@ -268,7 +314,7 @@ class CSVTableDialog(QDialog):
             "N/A",
             "Not assigned",
             "Alert, no SPI, aircraft on ground",
-            "Unknow"
+            "Unknow",
         ]
 
         for row in range(self.table_widget.rowCount()):
@@ -299,17 +345,21 @@ class CSVTableDialog(QDialog):
         """Applies an area filter based on latitude and longitude range inputs."""
         try:
             # Get the latitude and longitude range from the input fields
-            lat_min = float(self.lat_min_input.text().replace(',', '.'))
-            lat_max = float(self.lat_max_input.text().replace(',', '.'))
-            lon_min = float(self.lon_min_input.text().replace(',', '.'))
-            lon_max = float(self.lon_max_input.text().replace(',', '.'))
+            lat_min = float(self.lat_min_input.text().replace(",", "."))
+            lat_max = float(self.lat_max_input.text().replace(",", "."))
+            lon_min = float(self.lon_min_input.text().replace(",", "."))
+            lon_max = float(self.lon_max_input.text().replace(",", "."))
         except ValueError:
-            QMessageBox.warning(self, "Input Error", "Please enter valid numeric values for the coordinates.")
+            QMessageBox.warning(
+                self,
+                "Input Error",
+                "Please enter valid numeric values for the coordinates.",
+            )
             return  # Exit the function if the input is invalid
 
         # Clear previous area filter status
         self.currently_visible_rows = set(range(self.table_widget.rowCount()))
-        
+
         for row in range(self.table_widget.rowCount()):
             try:
                 # Use fixed column indices for latitude (5) and longitude (6)
@@ -317,15 +367,19 @@ class CSVTableDialog(QDialog):
                 lon_item = self.table_widget.item(row, 6)
 
                 if lat_item and lon_item:
-                    lat = float(lat_item.text().replace(',', '.'))
-                    lon = float(lon_item.text().replace(',', '.'))
+                    lat = float(lat_item.text().replace(",", "."))
+                    lon = float(lon_item.text().replace(",", "."))
 
                     # Check if the coordinates fall within the specified range
                     if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
-                        self.table_widget.setRowHidden(row, False)  # Show rows within the range
+                        self.table_widget.setRowHidden(
+                            row, False
+                        )  # Show rows within the range
                         self.currently_visible_rows.add(row)
                     else:
-                        self.table_widget.setRowHidden(row, True)  # Hide rows outside the range
+                        self.table_widget.setRowHidden(
+                            row, True
+                        )  # Hide rows outside the range
                         self.currently_visible_rows.discard(row)
                 else:
                     # Hide rows with missing latitude/longitude
@@ -343,7 +397,6 @@ class CSVTableDialog(QDialog):
             f"  • <b>Latitude Range:</b> Min {lat_min}° - Max {lat_max}°<br>"
             f"  • <b>Longitude Range:</b> Min {lon_min}° - Max {lon_max}°"
         )
-
 
     def reset_area_filter(self):
         """Resets only the area filter and updates the table visibility."""
@@ -382,6 +435,9 @@ class MainWindow(QMainWindow):
 
         # Create submenu for conversion
         conversion_menu = main_menu.addMenu("Conversion")
+        convert_to_csv_action = QAction("Convert Asterix to CSV", self)
+        convert_to_csv_action.triggered.connect(self.convert_to_csv)
+        conversion_menu.addAction(convert_to_csv_action)
         # Add action to load and show CSV data
         load_csv_action = QAction("Load and Show CSV", self)
         load_csv_action.triggered.connect(self.open_csv_table)
@@ -411,12 +467,14 @@ class MainWindow(QMainWindow):
         self.aircraft_data = []
 
         self.control_layout = QHBoxLayout()
-        
+
         # Create a single button for Play/Pause functionality
         self.play_pause_button = QPushButton()
         self.play_pause_button.setText("Play")  # Set initial text to "Play"
         self.play_pause_button.clicked.connect(self.toggle_simulation)
-        self.control_layout.addWidget(self.play_pause_button)  # Add the button to the layout
+        self.control_layout.addWidget(
+            self.play_pause_button
+        )  # Add the button to the layout
 
         # Create a single button for Play/Pause functionality
         self.reset_button = QPushButton()
@@ -429,7 +487,6 @@ class MainWindow(QMainWindow):
         self.speed_button.setMenu(self.create_speed_menu())
         self.control_layout.addWidget(self.speed_button)  # Add the button to the layout
 
-        
         self.time_label = QLabel(" ", self)  # Inicializar el label con el tiempo en 0
         self.control_layout.addWidget(self.time_label)
 
@@ -442,69 +499,68 @@ class MainWindow(QMainWindow):
         for i in range(self.control_layout.count()):
             self.control_layout.itemAt(i).widget().setVisible(False)
 
-
-
     def show_play_pause_buttons(self):
         """Shows the Play/Pause button once the CSV is loaded."""
         for i in range(self.control_layout.count()):
             self.control_layout.itemAt(i).widget().setVisible(True)
 
-
     def seek_simulation(self, value):
         """Busca un tiempo específico en la simulación basado en el valor del slider."""
         self.current_time = value
         if self.current_time == int(min(self.aircraft_data_by_time.keys())):
-            self.web_view.page().runJavaScript(f"clearAircraft()")
+            self.web_view.page().runJavaScript(r"clearAircraft()")
 
-        self.time_label.setText(self.seconds_to_hhmmss(value))  
+        self.time_label.setText(self.seconds_to_hhmmss(value))
 
         self.update_aircraft_positions_before_current_time()
- 
 
     def update_aircraft_positions_before_current_time(self):
         """Actualiza las posiciones de todas las aeronaves al último punto conocido antes del current_time."""
         all_times = sorted(map(int, self.aircraft_data_by_time.keys()))
 
         for aircraft in self.aircraft_data:
-            ti = aircraft['ti']
-            
+            ti = aircraft["ti"]
+
             last_position = None
-            
+
             # Buscar la última posición registrada para el avión antes del current_time
             for time in reversed(all_times):
                 if time < self.current_time:
                     aircraft_list = self.aircraft_data_by_time.get(str(time), [])
                     for a in aircraft_list:
-                        if a['ti'] == ti:
+                        if a["ti"] == ti:
                             last_position = a
                             break
                 if last_position is not None:
                     break
-            
-            if last_position:
-                latitude = last_position['lat']
-                longitude = last_position['lon']
-                altitude = last_position['h']
-                heading = last_position['heading']
-                self.web_view.page().runJavaScript(f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});")
 
+            if last_position:
+                latitude = last_position["lat"]
+                longitude = last_position["lon"]
+                altitude = last_position["h"]
+                heading = last_position["heading"]
+                self.web_view.page().runJavaScript(
+                    f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});"
+                )
 
     def create_speed_menu(self):
         speed_menu = QMenu(self)
         speed_group = QActionGroup(self)  # Create an action group for the speed options
 
         # Define speed options
-        speeds = [("x0.5", 0.5), ("x1", 1), ("x2", 2), ("x4", 4), ("x8", 8)]
-        
+        speeds = [("x0.5", 0.5), ("x1", 1), ("x2", 2), ("x4", 4), ("x8", 8), ("x16", 16), ("x32", 32), ("x50", 50)]
+
         for label, value in speeds:
             action = QAction(label, self, checkable=True)
             action.setChecked(value == self.selected_speed)  # Check the selected speed
-            action.triggered.connect(lambda checked, v=value: self.set_speed(v))  # Bind speed setting
+            action.triggered.connect(
+                lambda checked, v=value: self.set_speed(v)
+            )  # Bind speed setting
             speed_group.addAction(action)  # Add to the action group
             speed_menu.addAction(action)
 
         return speed_menu
- 
+
     def set_speed(self, speed):
         """Sets the selected speed for the simulation."""
         self.selected_speed = speed  # Update the stored speed
@@ -515,9 +571,8 @@ class MainWindow(QMainWindow):
         # Optionally, update the simulation timer interval if running
         if self.timer.isActive():
             self.timer.stop()
-            interval = int(1000 / self.selected_speed)  
-            self.timer.start(interval)   
-  
+            interval = int(1000 / self.selected_speed)
+            self.timer.start(interval)
 
     def reset_simulation(self):
         self.current_time = int(min(self.aircraft_data_by_time.keys()))
@@ -525,8 +580,7 @@ class MainWindow(QMainWindow):
         self.time_label.setText(self.seconds_to_hhmmss(self.current_time))
         self.progress_bar.setValue(self.current_time)  # Initial value
 
-        self.web_view.page().runJavaScript(f"clearAircraft()")
-
+        self.web_view.page().runJavaScript(r"clearAircraft()")
 
     def toggle_simulation(self):
         """Handles both starting and pausing the simulation."""
@@ -537,14 +591,12 @@ class MainWindow(QMainWindow):
             # Pause the simulation
             self.toggle_pause()
 
-    
     def seconds_to_hhmmss(self, seconds):
         """Convert seconds to hh:mm:ss format."""
         hours = seconds // 3600
         minutes = (seconds % 3600) // 60
         remaining_seconds = seconds % 60
         return f"{hours:02}:{minutes:02}:{remaining_seconds:02}"
-
 
     def start_simulation(self):
         """Starts the simulation by initializing the timer."""
@@ -553,7 +605,7 @@ class MainWindow(QMainWindow):
             return
 
         # Initialize the current_time with the first time in the dataset
-        if not hasattr(self, 'current_time') or self.current_time is None:
+        if not hasattr(self, "current_time") or self.current_time is None:
             self.current_time = int(min(self.aircraft_data_by_time.keys()))
         else:
             # No reset of current_time, continue from where it left off
@@ -561,11 +613,10 @@ class MainWindow(QMainWindow):
 
         if not self.timer.isActive():
             # Start the timer only if it is not already active
-            interval = int(1000 / self.selected_speed)  
-            self.timer.start(interval)               
+            interval = int(1000 / self.selected_speed)
+            self.timer.start(interval)
         # Change the button text and icon to "Pause"
         self.play_pause_button.setText("Pause")
-
 
     def toggle_pause(self):
         """Toggles between pausing and resuming the simulation."""
@@ -573,10 +624,9 @@ class MainWindow(QMainWindow):
             self.timer.stop()
             self.play_pause_button.setText("Play")
         else:
-            interval = int(1000 / self.selected_speed)  
-            self.timer.start(interval)   
+            interval = int(1000 / self.selected_speed)
+            self.timer.start(interval)
             self.play_pause_button.setText("Pause")
-
 
     def update_simulation(self):
         """Updates the aircraft positions based on the simulation time step."""
@@ -585,7 +635,7 @@ class MainWindow(QMainWindow):
         if current_time_str in self.aircraft_data_by_time:
             # Get all aircraft for the current time step
             aircraft_list = self.aircraft_data_by_time[current_time_str]
-            
+
             # Update positions for all aircraft in the list
             for aircraft in aircraft_list:
                 latitude = aircraft["lat"]
@@ -595,9 +645,13 @@ class MainWindow(QMainWindow):
                 heading = aircraft["heading"]
 
                 if ti != "N/A":
-                    self.web_view.page().runJavaScript(f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});")
-                
-            self.time_label.setText(self.seconds_to_hhmmss(self.current_time))  # Actualiza el QLabel con el tiempo actual
+                    self.web_view.page().runJavaScript(
+                        f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});"
+                    )
+
+            self.time_label.setText(
+                self.seconds_to_hhmmss(self.current_time)
+            )  # Actualiza el QLabel con el tiempo actual
 
         # Find the next time step in the data
         all_times = sorted(map(int, self.aircraft_data_by_time.keys()))
@@ -605,25 +659,25 @@ class MainWindow(QMainWindow):
 
         self.progress_bar.setValue(self.current_time)  # Set the slider to current time
 
-
         if current_index < len(all_times) - 1:
             next_time = all_times[current_index + 1]
-                
+
             # Calculate the time difference in seconds
             time_difference = next_time - self.current_time
-                
+
             # Set the next update based on the time difference
-            interval = int(1000 / self.selected_speed)  
+            interval = int(1000 / self.selected_speed)
             self.timer.start(time_difference * interval)  # Adjust to speed
-                
+
             # Update current time to next time
             self.current_time = next_time
         else:
             self.timer.stop()  # Stop the simulation when the last time step is reached
-            QMessageBox.information(self, "Simulation Ended", "The simulation has completed.")
+            QMessageBox.information(
+                self, "Simulation Ended", "The simulation has completed."
+            )
             self.reset_simulation()
             self.play_pause_button.setText("Play")
-
 
     def open_csv_table(self):
         """Opens a file dialog to select a CSV file and shows it in a table."""
@@ -649,6 +703,41 @@ class MainWindow(QMainWindow):
             
             self.show_play_pause_buttons()
 
+    def convert_to_csv(self):
+        """Opens a file dialog to select a CSV file and shows it in a table."""
+        input_file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open CSV File", "", "Asterix (*.ast);;All Files (*)"
+        )
+        csv_file_path, _ = QFileDialog.getSaveFileName(
+            self, "Save as", "", "CSV (*.csv);;All Files (*)"
+        )
+
+        convert_to_csv(input_file_path, csv_file_path)
+
+        if csv_file_path:
+            # Show progress dialog during the loading
+            progress_dialog = ProgressDialog(self)
+            progress_dialog.show()
+
+            # Show CSV table with data
+            dialog = CSVTableDialog(csv_file_path, self, progress_dialog)
+            self.aircraft_data = (
+                dialog.aircraft_data
+            )  # Store aircraft data for simulation
+
+            self.aircraft_data_by_time = (
+                dialog.aircraft_data_by_time
+            )  # Actualiza los datos en MainWindow
+
+            if self.aircraft_data_by_time:
+                min_time = int(min(self.aircraft_data_by_time.keys()))
+                max_time = int(max(self.aircraft_data_by_time.keys()))
+                self.progress_bar.setRange(
+                    min_time, max_time
+                )  # Ajustar rango del slider
+                self.progress_bar.setValue(min_time)  # Initial value
+
+            self.show_play_pause_buttons()
 
 
 if __name__ == "__main__":
