@@ -233,31 +233,33 @@ class CSVTableDialog(QDialog):
 
                 # Populate table with data and update progress dialog
                 for row_idx, row_data in enumerate(data[1:]):  # Skip header
+                    try:
+                        aircraft_info = {
+                            "time": row_data[time_idx],
+                            "lat": float(row_data[lat_idx].replace(",", ".")),
+                            "lon": float(row_data[lon_idx].replace(",", ".")),
+                            "ti": row_data[ti_idx],
+                            "h": float(row_data[h_idx].replace(",", ".")),
+                            "heading": float(row_data[heading_idx].replace(",", ".")),
+                        }
+                        # Group aircraft by time
+                        time = aircraft_info["time"]
+                        if time not in self.aircraft_data_by_time:
+                            self.aircraft_data_by_time[time] = []
+                        self.aircraft_data_by_time[time].append(aircraft_info)
 
-                    aircraft_info = {
-                        "time": row_data[time_idx],
-                        "lat": float(row_data[lat_idx].replace(",", ".")),
-                        "lon": float(row_data[lon_idx].replace(",", ".")),
-                        "ti": row_data[ti_idx],
-                        "h": float(row_data[h_idx].replace(",", ".")),
-                        "heading": float(row_data[heading_idx].replace(",", ".")),
-                    }
-                    # Group aircraft by time
-                    time = aircraft_info["time"]
-                    if time not in self.aircraft_data_by_time:
-                        self.aircraft_data_by_time[time] = []
-                    self.aircraft_data_by_time[time].append(aircraft_info)
+                        for col_idx, cell_data in enumerate(row_data):
+                            self.table_widget.setItem(
+                                row_idx, col_idx, QTableWidgetItem(cell_data)
+                            )
 
-                    for col_idx, cell_data in enumerate(row_data):
-                        self.table_widget.setItem(
-                            row_idx, col_idx, QTableWidgetItem(cell_data)
-                        )
-
-                    # Update progress dialog
-                    progress_value = int((row_idx / total_rows) * 100)
-                    if progress_dialog:
-                        progress_dialog.set_progress(progress_value)
-                    QApplication.processEvents()
+                        # Update progress dialog
+                        progress_value = int((row_idx / total_rows) * 100)
+                        if progress_dialog:
+                            progress_dialog.set_progress(progress_value)
+                        QApplication.processEvents()
+                    except Exception as e:
+                        print(f"Error loading row {row_idx}: {e}")
                 # Resize columns to fit content
                 self.table_widget.resizeColumnsToContents()
 
@@ -672,16 +674,19 @@ class MainWindow(QMainWindow):
 
             # Update positions for all aircraft in the list
             for aircraft in aircraft_list:
-                latitude = aircraft["lat"]
-                longitude = aircraft["lon"]
-                ti = aircraft["ti"]
-                altitude = aircraft["h"]
-                heading = aircraft["heading"]
+                try:
+                    latitude = aircraft["lat"]
+                    longitude = aircraft["lon"]
+                    ti = aircraft["ti"]
+                    altitude = aircraft["h"]
+                    heading = aircraft["heading"]
 
-                if ti != "N/A":
-                    self.web_view.page().runJavaScript(
-                        f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});"
-                    )
+                    if ti != "N/A":
+                        self.web_view.page().runJavaScript(
+                            f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});"
+                        )
+                except Exception as e:
+                    print(f"Error updating aircraft: {e}")
 
             self.time_label.setText(
                 self.seconds_to_hhmmss(self.current_time)
