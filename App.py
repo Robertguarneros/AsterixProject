@@ -46,7 +46,7 @@ class ProgressDialog(QDialog):
         self.progress_bar.setGeometry(30, 40, 240, 25)
 
         # Label
-        self.label = QLabel("Loading, please wait...", self)
+        self.label = QLabel("Loading CSV into table, please wait...", self)
         self.label.setAlignment(Qt.AlignCenter)
 
         # Layout
@@ -755,7 +755,11 @@ class MainWindow(QMainWindow):
         if csv_file_path == "":
             return
 
+        QMessageBox.information(self, "Conversion Started", "The conversion process has started. This may take a while.")
+
         convert_to_csv(input_file_path, csv_file_path)
+
+        QMessageBox.information(self, "Conversion Successful", "The file has been converted successfully.")
 
         if csv_file_path:
             # Show progress dialog during the loading
