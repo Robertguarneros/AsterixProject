@@ -103,6 +103,10 @@ class CSVTableDialog(QDialog):
         self.start_simulation_button.setVisible(False)
         self.start_simulation_button.clicked.connect(parent.start_simulation)
 
+        # Add export button
+        self.export_button = QPushButton("Export Filtered Data")
+        self.export_button.clicked.connect(self.export_filtered_data)
+
         # Filter options
         self.filter_combobox = QComboBox()
         self.filter_combobox.setEditable(False)  # No se puede editar el texto
@@ -154,6 +158,9 @@ class CSVTableDialog(QDialog):
         self.area_hidden_rows = set()
         self.other_filters_hidden_rows = set()
 
+        # Add export button to layout
+        layout.addWidget(self.export_button)    
+
         # Load CSV data with a progress dialog
         self.load_csv_data(csv_file_path, progress_dialog)
         self.currently_visible_rows = set(
@@ -170,6 +177,31 @@ class CSVTableDialog(QDialog):
 
         # Show the dialog in a normal windowed mode, user can maximize it
         self.showMaximized()
+    def export_filtered_data(self):
+        """Exports the filtered data to a new CSV file using semicolons as the delimiter."""
+        options = QFileDialog.Options()
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Save Filtered Data As", "", "CSV Files (*.csv);;All Files (*)", options=options
+        )
+
+        if file_path:
+            with open(file_path, mode='w', newline='') as file:
+                writer = csv.writer(file, delimiter=';')  # Use semicolon as delimiter
+                
+                # Write headers
+                headers = [self.table_widget.horizontalHeaderItem(i).text() for i in range(self.table_widget.columnCount())]
+                writer.writerow(headers)
+
+                # Write filtered rows
+                for row in range(self.table_widget.rowCount()):
+                    if not self.table_widget.isRowHidden(row):
+                        row_data = [
+                            self.table_widget.item(row, col).text() if self.table_widget.item(row, col) else ""
+                            for col in range(self.table_widget.columnCount())
+                        ]
+                        writer.writerow(row_data)
+
+            QMessageBox.information(self, "Export Successful", "Filtered data has been exported successfully.")
 
     def load_csv_data(self, csv_file_path, progress_dialog):
         """Loads data from the CSV file and displays it in the table."""
@@ -327,12 +359,14 @@ class CSVTableDialog(QDialog):
         self.update_row_visibility()
 
     def update_row_visibility(self):
-        """Updates visibility of rows based on area and other filter sets."""
+        """Updates visibility of rows based on area and other filter sets, and refreshes the table."""
         for row in range(self.table_widget.rowCount()):
             if row in self.area_hidden_rows or row in self.other_filters_hidden_rows:
                 self.table_widget.setRowHidden(row, True)
             else:
                 self.table_widget.setRowHidden(row, False)
+        # Force a UI update to reflect changes immediately
+        QApplication.processEvents()
 
     def reset_other_filters(self):
         """Resets only the non-area filters and updates the table visibility."""
@@ -708,9 +742,13 @@ class MainWindow(QMainWindow):
         input_file_path, _ = QFileDialog.getOpenFileName(
             self, "Open CSV File", "", "Asterix (*.ast);;All Files (*)"
         )
+        if input_file_path == "":
+            return
         csv_file_path, _ = QFileDialog.getSaveFileName(
             self, "Save as", "", "CSV (*.csv);;All Files (*)"
         )
+        if csv_file_path == "":
+            return
 
         convert_to_csv(input_file_path, csv_file_path)
 
