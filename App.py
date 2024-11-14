@@ -28,6 +28,7 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
+    QProgressDialog
 )
 
 from conversion_functions import convert_to_csv
@@ -115,12 +116,8 @@ class CSVTableDialog(QDialog):
         # Filter options
         self.filter_combobox = QComboBox()
         self.filter_combobox.setEditable(False)  # No se puede editar el texto
-        self.filter_combobox.addItem(
-            "Active Filters: None"
-        )  # Cabecera que mostrará filtros activos
-        self.filter_combobox.model().item(0).setEnabled(
-            False
-        )  # Deshabilitar primera opción (cabecera)
+        self.filter_combobox.addItem("Active Filters: None")  # Cabecera que mostrará filtros activos
+        self.filter_combobox.model().item(0).setEnabled(False)  # Deshabilitar primera opción (cabecera)
 
         # Opciones de filtro
         self.filter_combobox.addItem("No Filter")
@@ -137,9 +134,27 @@ class CSVTableDialog(QDialog):
         filter_layout.addWidget(self.filter_combobox)
         filter_layout.addWidget(self.apply_filter_button)
 
+        # Crear ComboBox para columna de búsqueda y QLineEdit para introducir texto
+        self.search_column_combobox = QComboBox()
+        self.search_column_combobox.setFixedWidth(150)  # Reducir el tamaño de la caja de texto del buscador
+        self.search_column_combobox.addItem("Searcher")  # Texto visible como placeholder
+        self.search_column_combobox.model().item(0).setEnabled(False)  # Deshabilitar este ítem para que no sea seleccionable
+
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search text")
+        self.search_input.setFixedWidth(300)  # Reducir el tamaño de la caja de texto del buscador
+        self.search_input.textChanged.connect(self.apply_search_filter)
+
+        # Crear layout para el buscador y alinearlo a la derecha
+        search_layout = QHBoxLayout()
+        search_layout.addStretch()  # Asegura que el buscador se alinee a la derecha
+        search_layout.addWidget(self.search_column_combobox)
+        search_layout.addWidget(self.search_input)
+
         # Main layout
         layout = QVBoxLayout()
         layout.addLayout(filter_layout)
+        layout.addLayout(search_layout)  # Añadir el layout del buscador aquí
         layout.addWidget(self.table_widget)
         layout.addWidget(self.start_simulation_button)
         self.setLayout(layout)
@@ -173,9 +188,16 @@ class CSVTableDialog(QDialog):
 
         # Load CSV data with a progress dialog
         self.load_csv_data(csv_file_path, progress_dialog)
-        self.currently_visible_rows = set(
-            range(self.table_widget.rowCount())
-        )  # Todas las filas visibles al inicio
+    
+        # Inicializamos las filas visibles y las que ha ocultado el buscador
+        self.currently_visible_rows = set(range(self.table_widget.rowCount()))  # Todas las filas visibles al inicio
+        self.search_hidden_rows = set()  # Filas ocultadas solo por el buscador
+        
+        # Populate search column combobox with table headers
+        self.populate_search_columns()
+
+        # Ocultar la columna de numeración de filas (índices de fila)
+        self.table_widget.verticalHeader().setVisible(False)
 
         # Allow window to be maximized with a system maximize button
         self.setWindowFlags(
@@ -188,6 +210,45 @@ class CSVTableDialog(QDialog):
         # Show the dialog in a normal windowed mode, user can maximize it
         self.showMaximized()
 
+    def populate_search_columns(self):
+        """Populate the search column combobox with the table's column headers."""
+        for col in range(self.table_widget.columnCount()):
+            header_text = self.table_widget.horizontalHeaderItem(col).text()
+            self.search_column_combobox.addItem(header_text, col)
+
+    def apply_search_filter(self):
+        """Filter rows based on the text in the search input for the selected column."""
+        search_text = self.search_input.text().strip().lower()
+        selected_column = self.search_column_combobox.currentData()
+
+        # Si no hay ninguna columna seleccionada o si el texto de búsqueda está vacío, no aplicar filtro.
+        if selected_column is None or not search_text:
+            # Restaurar solo las filas que ocultó el buscador
+            for row in self.search_hidden_rows:
+                # Mostrar la fila solo si no está oculta por otros filtros
+                if row not in self.other_filters_hidden_rows and row not in self.area_hidden_rows:
+                    self.table_widget.setRowHidden(row, False)
+            # Limpiar el conjunto de filas ocultadas por el buscador
+            self.search_hidden_rows.clear()
+            return
+
+        # Filtrar solo en filas actualmente visibles
+        new_search_hidden_rows = set()  # Guardamos las filas que ocultaremos en esta búsqueda
+        for row in self.currently_visible_rows:
+            # Obtener el texto de la celda solo una vez para mejorar el rendimiento
+            cell_text = self.table_widget.item(row, selected_column).text().strip().lower()
+
+            if search_text not in cell_text:
+                # Ocultamos la fila y la añadimos a las filas ocultadas por esta búsqueda
+                self.table_widget.setRowHidden(row, True)
+                new_search_hidden_rows.add(row)
+            else:
+                # Mostramos la fila solo si no está oculta por otros filtros
+                if row in self.search_hidden_rows and row not in self.other_filters_hidden_rows and row not in self.area_hidden_rows:
+                    self.table_widget.setRowHidden(row, False)
+
+        # Actualizamos las filas ocultadas por el buscador para esta búsqueda
+        self.search_hidden_rows = new_search_hidden_rows
 
     def export_filtered_data(self):
         """Exports the filtered data to a new CSV file using semicolons as the delimiter."""
@@ -219,6 +280,15 @@ class CSVTableDialog(QDialog):
 
 
     def initialize_simulation(self):
+
+        # Ventana de progreso
+        self.progress_dialog = QProgressDialog("Loading simulation data...", "Cancel", 0, 100, self)
+        self.progress_dialog.setWindowModality(Qt.WindowModal)
+        self.progress_dialog.setValue(0)  # Inicia en 0%
+        self.progress_dialog.setMinimumDuration(0)  # Aparece inmediatamente
+        self.progress_dialog.setCancelButton(None)  # Deshabilita el botón de cancelar
+        self.progress_dialog.show()
+
         headers = [self.table_widget.horizontalHeaderItem(i).text() for i in range(self.table_widget.columnCount())]
 
         time_idx = headers.index("TIME(s)")
@@ -232,6 +302,8 @@ class CSVTableDialog(QDialog):
         self.aircraft_data_by_time = {}
         self.aircraft_list = set()
         self.last_known_time_for_aircraft = {}  # Almacena el último tiempo de cada avión
+
+        total_rows = self.table_widget.rowCount()
 
         # Loop through each row of the table widget, starting from the first row after the header
         for row_idx in range(1, self.table_widget.rowCount()):  # Skip header
@@ -273,20 +345,30 @@ class CSVTableDialog(QDialog):
                     self.aircraft_list.add(ti)
 
                 self.last_known_time_for_aircraft[ti] = str(int(time) + 3)
+            
+            # Actualizar la barra de progreso
+            progress = int((row_idx / total_rows) * 100)  # Calcular el progreso en porcentaje
+            self.progress_dialog.setValue(progress)
+
+            # Si el usuario cierra el diálogo, interrumpimos la simulación
+            if self.progress_dialog.wasCanceled():
+                break
         
         # Store the organized data in the parent for further use
         self.parent().aircraft_data_by_time = self.aircraft_data_by_time
         self.parent().aircraft_list = list(self.aircraft_list)  
         self.parent().last_known_time_for_aircraft = self.last_known_time_for_aircraft
-        self.parent().show_play_pause_buttons()
 
         if self.aircraft_data_by_time:
                 min_time = int(min(self.aircraft_data_by_time.keys()))
                 max_time = int(max(self.aircraft_data_by_time.keys()))
                 self.parent().progress_bar.setRange(min_time, max_time)  # Ajustar rango del slider
                 self.parent().progress_bar.setValue(min_time)  # Initial value
-
+        
+        # Cerrar el diálogo de progreso después de cargar los datos
+        self.progress_dialog.close()
         self.resize(400, 300)
+        self.parent().show_play_pause_buttons()
 
 
     def load_csv_data(self, csv_file_path, progress_dialog):
@@ -341,7 +423,10 @@ class CSVTableDialog(QDialog):
 
     def apply_filters(self):
         """Applies filters based on the selected option in the combobox."""
+
         selected_filter = self.filter_combobox.currentText()
+        self.search_input.clear()  # Limpiar texto del buscador al aplicar filtros
+
         if "Active Filters" in selected_filter:
             return
 
@@ -443,6 +528,8 @@ class CSVTableDialog(QDialog):
 
     def apply_area_filter(self):
         """Applies an area filter based on latitude and longitude range inputs."""
+        self.search_input.clear()  # Limpiar texto del buscador al aplicar filtros
+
         try:
             # Get the latitude and longitude range from the input fields
             lat_min = float(self.lat_min_input.text().replace(",", "."))
@@ -457,12 +544,13 @@ class CSVTableDialog(QDialog):
             )
             return  # Exit the function if the input is invalid
 
-        # Clear previous area filter status
-        self.currently_visible_rows = set(range(self.table_widget.rowCount()))
+        # Limpiar el conjunto de filas ocultadas solo por el filtro de área
+        self.area_hidden_rows.clear()
 
+        # Aplicar el filtro de área a las filas visibles
         for row in range(self.table_widget.rowCount()):
             try:
-                # Use fixed column indices for latitude (5) and longitude (6)
+                # Usar índices fijos para las columnas de latitud y longitud
                 lat_item = self.table_widget.item(row, 5)
                 lon_item = self.table_widget.item(row, 6)
 
@@ -470,28 +558,26 @@ class CSVTableDialog(QDialog):
                     lat = float(lat_item.text().replace(",", "."))
                     lon = float(lon_item.text().replace(",", "."))
 
-                    # Check if the coordinates fall within the specified range
+                    # Verificar si las coordenadas están dentro del rango especificado
                     if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
-                        self.table_widget.setRowHidden(
-                            row, False
-                        )  # Show rows within the range
-                        self.currently_visible_rows.add(row)
+                        # Solo mostrar la fila si no está oculta por otros filtros
+                        if row not in self.other_filters_hidden_rows and row not in self.search_hidden_rows:
+                            self.table_widget.setRowHidden(row, False)
                     else:
-                        self.table_widget.setRowHidden(
-                            row, True
-                        )  # Hide rows outside the range
-                        self.currently_visible_rows.discard(row)
+                        # Ocultar la fila y agregarla a las ocultadas por el filtro de área
+                        self.table_widget.setRowHidden(row, True)
+                        self.area_hidden_rows.add(row)
                 else:
-                    # Hide rows with missing latitude/longitude
+                    # Ocultar filas con latitud/longitud faltante y agregar a las filas ocultas por área
                     self.table_widget.setRowHidden(row, True)
-                    self.currently_visible_rows.discard(row)
+                    self.area_hidden_rows.add(row)
 
             except ValueError:
-                # If conversion to float fails, hide the row
+                # Si ocurre un error de conversión a float, ocultar la fila y agregar a las ocultas por área
                 self.table_widget.setRowHidden(row, True)
-                self.currently_visible_rows.discard(row)
+                self.area_hidden_rows.add(row)
 
-        # Update the active area filter label with a more descriptive format
+        # Actualizar la etiqueta de filtro de área activo
         self.active_area_filter_label.setText(
             f"<b>Active Area Filter:</b><br>"
             f"  • <b>Latitude Range:</b> Min {lat_min}° - Max {lat_max}°<br>"
@@ -501,8 +587,16 @@ class CSVTableDialog(QDialog):
 
     def reset_area_filter(self):
         """Resets only the area filter and updates the table visibility."""
+        # Limpiar el conjunto de filas ocultadas solo por el filtro de área
+        self.search_input.clear()  # Limpiar texto del buscador al aplicar filtros
         self.area_hidden_rows.clear()
-        self.update_row_visibility()
+
+        # Restaurar solo las filas ocultadas por el filtro de área sin afectar a las filas de otros filtros
+        for row in range(self.table_widget.rowCount()):
+            if row not in self.other_filters_hidden_rows and row not in self.search_hidden_rows:
+                self.table_widget.setRowHidden(row, False)
+
+        # Restablecer los campos de entrada y la etiqueta de filtro de área activo
         self.active_area_filter_label.setText("Active Area Filter: None")
         self.lat_min_input.clear()
         self.lat_max_input.clear()
