@@ -36,7 +36,7 @@
 
         function addAircraft(latitude, longitude, ti, altitude, heading) {
             var marker = L.marker([latitude, longitude], { icon: createAirplaneIcon(heading) }).addTo(map);
-            marker.bindPopup("TI: " + ti + "<br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);
+            marker.bindPopup("<b>" + ti + "</b><br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);
             marker.on('click', function () {
                 marker.openPopup();
             });
@@ -53,7 +53,7 @@
                 marker.setLatLng([latitude, longitude]);
                 // Update the marker's icon with the new heading
                 marker.setIcon(createAirplaneIcon(heading));
-                marker.bindPopup("TI: " + ti + "<br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);  // Update popup
+                marker.bindPopup("<b>" + ti + "</b><br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);
             } else {
                 // If the aircraft doesn't exist, add it
                 addAircraft(latitude, longitude, ti, altitude, heading);
@@ -70,6 +70,15 @@
             }
             aircraftMarkers = {};
         }
+
+        function removeAircraft(ti) {
+            var marker = findAircraftByTi(ti);
+            if (marker) {
+                map.removeLayer(marker);  // Elimina el marcador del mapa
+                delete aircraftMarkers[ti];  // Elimina el marcador del diccionario
+            }
+        }
+
     </script>
 </body>
 </html>

@@ -67,8 +67,9 @@ class CSVTableDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("CSV Data")
 
-        self.aircraft_data = []  # List to store aircraft positions for the simulation
         self.aircraft_data_by_time = {}  # Initialize the attribute here
+        self.aircraft_list = {}
+        self.last_known_time_for_aircraft = {}
 
         # Create table widget
         self.table_widget = QTableWidget()
@@ -106,6 +107,10 @@ class CSVTableDialog(QDialog):
         # Add export button
         self.export_button = QPushButton("Export Filtered Data")
         self.export_button.clicked.connect(self.export_filtered_data)
+
+        # Add simulation button
+        self.simulation_button = QPushButton("Simulate Filtered Data")
+        self.simulation_button.clicked.connect(self.initialize_simulation)
 
         # Filter options
         self.filter_combobox = QComboBox()
@@ -158,8 +163,13 @@ class CSVTableDialog(QDialog):
         self.area_hidden_rows = set()
         self.other_filters_hidden_rows = set()
 
-        # Add export button to layout
-        layout.addWidget(self.export_button)    
+        # Add export and simulation button to layout
+        expSim_layout = QHBoxLayout()
+        expSim_layout.addWidget(self.export_button)  
+        expSim_layout.addWidget(self.simulation_button)  
+        
+        # Añadir layout al layout principal
+        layout.addLayout(expSim_layout)    
 
         # Load CSV data with a progress dialog
         self.load_csv_data(csv_file_path, progress_dialog)
@@ -177,6 +187,8 @@ class CSVTableDialog(QDialog):
 
         # Show the dialog in a normal windowed mode, user can maximize it
         self.showMaximized()
+
+
     def export_filtered_data(self):
         """Exports the filtered data to a new CSV file using semicolons as the delimiter."""
         options = QFileDialog.Options()
@@ -202,6 +214,80 @@ class CSVTableDialog(QDialog):
                         writer.writerow(row_data)
 
             QMessageBox.information(self, "Export Successful", "Filtered data has been exported successfully.")
+        
+        self.parent().hide_play_pause_buttons()
+
+
+    def initialize_simulation(self):
+        headers = [self.table_widget.horizontalHeaderItem(i).text() for i in range(self.table_widget.columnCount())]
+
+        time_idx = headers.index("TIME(s)")
+        lat_idx = headers.index("LAT")
+        lon_idx = headers.index("LON")
+        ti_idx = headers.index("TI")
+        h_idx = headers.index("H")
+        heading_idx = headers.index("HEADING")
+
+        # Dictionary to store aircraft data 
+        self.aircraft_data_by_time = {}
+        self.aircraft_list = set()
+        self.last_known_time_for_aircraft = {}  # Almacena el último tiempo de cada avión
+
+        # Loop through each row of the table widget, starting from the first row after the header
+        for row_idx in range(1, self.table_widget.rowCount()):  # Skip header
+
+            if self.table_widget.isRowHidden(row_idx):
+                continue  # Skip hidden rows
+
+            # Retrieve each cell's data for the row
+            row_data = [self.table_widget.item(row_idx, col_idx).text() if self.table_widget.item(row_idx, col_idx) else ""
+                        for col_idx in range(self.table_widget.columnCount())]
+
+            # Create an aircraft info dictionary for the current row
+            aircraft_info = {
+                "time": row_data[time_idx],
+                "lat": float(row_data[lat_idx].replace(",", ".")),
+                "lon": float(row_data[lon_idx].replace(",", ".")),
+                "ti": row_data[ti_idx],
+                "h": float(row_data[h_idx].replace(",", ".")),
+                "heading": float(row_data[heading_idx].replace(",", ".")),
+            }
+
+            time = aircraft_info["time"]
+            ti = aircraft_info["ti"]
+            lat = aircraft_info["lat"]
+            lon = aircraft_info["lon"]
+            h = aircraft_info["h"]
+            heading = aircraft_info["heading"]
+
+            # Verificar que todos los campos sean diferentes de "N/A"
+            if ti != "N/A" and time != "N/A" and lat != "N/A" and lon != "N/A" and h != "N/A" and heading != "N/A":
+ 
+                # Agregar los aviones al grupo de datos por tiempo
+                if time not in self.aircraft_data_by_time:
+                    self.aircraft_data_by_time[time] = []
+                self.aircraft_data_by_time[time].append(aircraft_info)
+
+                # Agregar el avión a la lista de aviones si no está ya añadido
+                if ti not in self.aircraft_list:
+                    self.aircraft_list.add(ti)
+
+                self.last_known_time_for_aircraft[ti] = str(int(time) + 3)
+        
+        # Store the organized data in the parent for further use
+        self.parent().aircraft_data_by_time = self.aircraft_data_by_time
+        self.parent().aircraft_list = list(self.aircraft_list)  
+        self.parent().last_known_time_for_aircraft = self.last_known_time_for_aircraft
+        self.parent().show_play_pause_buttons()
+
+        if self.aircraft_data_by_time:
+                min_time = int(min(self.aircraft_data_by_time.keys()))
+                max_time = int(max(self.aircraft_data_by_time.keys()))
+                self.parent().progress_bar.setRange(min_time, max_time)  # Ajustar rango del slider
+                self.parent().progress_bar.setValue(min_time)  # Initial value
+
+        self.resize(400, 300)
+
 
     def load_csv_data(self, csv_file_path, progress_dialog):
         """Loads data from the CSV file and displays it in the table."""
@@ -221,33 +307,9 @@ class CSVTableDialog(QDialog):
                 headers = data[0]
                 self.table_widget.setHorizontalHeaderLabels(headers)
 
-                time_idx = headers.index("TIME(s)")
-                lat_idx = headers.index("LAT")
-                lon_idx = headers.index("LON")
-                ti_idx = headers.index("TI")
-                h_idx = headers.index("H")
-                heading_idx = headers.index("HEADING")
-
-                # Dictionary to store aircraft data grouped by time
-                self.aircraft_data_by_time = {}
-
                 # Populate table with data and update progress dialog
                 for row_idx, row_data in enumerate(data[1:]):  # Skip header
                     try:
-                        aircraft_info = {
-                            "time": row_data[time_idx],
-                            "lat": float(row_data[lat_idx].replace(",", ".")),
-                            "lon": float(row_data[lon_idx].replace(",", ".")),
-                            "ti": row_data[ti_idx],
-                            "h": float(row_data[h_idx].replace(",", ".")),
-                            "heading": float(row_data[heading_idx].replace(",", ".")),
-                        }
-                        # Group aircraft by time
-                        time = aircraft_info["time"]
-                        if time not in self.aircraft_data_by_time:
-                            self.aircraft_data_by_time[time] = []
-                        self.aircraft_data_by_time[time].append(aircraft_info)
-
                         for col_idx, cell_data in enumerate(row_data):
                             self.table_widget.setItem(
                                 row_idx, col_idx, QTableWidgetItem(cell_data)
@@ -266,14 +328,16 @@ class CSVTableDialog(QDialog):
                 # Resize columns to fit content
                 self.table_widget.horizontalHeader().setSectionResizeMode(
                     QHeaderView.Interactive
-                )
-                self.parent().aircraft_data_by_time = self.aircraft_data_by_time
+                ) 
+
+            self.parent().hide_play_pause_buttons()
 
         # Set progress to 100% when done
         if progress_dialog:
             progress_dialog.set_progress(100)
             # Close the dialog when done
             progress_dialog.accept()  # Close the dialog here
+            
 
     def apply_filters(self):
         """Applies filters based on the selected option in the combobox."""
@@ -434,6 +498,7 @@ class CSVTableDialog(QDialog):
             f"  • <b>Longitude Range:</b> Min {lon_min}° - Max {lon_max}°"
         )
 
+
     def reset_area_filter(self):
         """Resets only the area filter and updates the table visibility."""
         self.area_hidden_rows.clear()
@@ -499,9 +564,6 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(central_widget)
         layout.addWidget(self.web_view)
 
-        # Placeholder for the aircraft data and simulation index
-        self.aircraft_data = []
-
         self.control_layout = QHBoxLayout()
 
         # Create a single button for Play/Pause functionality
@@ -536,9 +598,16 @@ class MainWindow(QMainWindow):
             self.control_layout.itemAt(i).widget().setVisible(False)
 
     def show_play_pause_buttons(self):
-        """Shows the Play/Pause button once the CSV is loaded."""
+        """Shows the Play/Pause button once the simulation is initialized."""
         for i in range(self.control_layout.count()):
             self.control_layout.itemAt(i).widget().setVisible(True)
+
+
+    def hide_play_pause_buttons(self):
+        """Shows the Play/Pause button once the simulation is initialized."""
+        for i in range(self.control_layout.count()):
+            self.control_layout.itemAt(i).widget().setVisible(False)
+
 
     def seek_simulation(self, value):
         """Busca un tiempo específico en la simulación basado en el valor del slider."""
@@ -548,36 +617,37 @@ class MainWindow(QMainWindow):
 
         self.time_label.setText(self.seconds_to_hhmmss(value))
 
-        self.update_aircraft_positions_before_current_time()
 
-    def update_aircraft_positions_before_current_time(self):
-        """Actualiza las posiciones de todas las aeronaves al último punto conocido antes del current_time."""
+    def update_aircraft_positions_before_current_time(self, aircraft):
+        """Actualiza la posición de la aeronave al último punto conocido antes del current_time."""
         all_times = sorted(map(int, self.aircraft_data_by_time.keys()))
 
-        for aircraft in self.aircraft_data:
-            ti = aircraft["ti"]
+        last_position = None
 
-            last_position = None
-
-            # Buscar la última posición registrada para el avión antes del current_time
-            for time in reversed(all_times):
-                if time < self.current_time:
-                    aircraft_list = self.aircraft_data_by_time.get(str(time), [])
-                    for a in aircraft_list:
-                        if a["ti"] == ti:
-                            last_position = a
-                            break
-                if last_position is not None:
+        for time in reversed(all_times):
+            if time < self.current_time:
+                aircraft_by_time = self.aircraft_data_by_time.get(str(time), [])
+                for a in aircraft_by_time:
+                    if a["ti"] == aircraft:
+                        last_position = a
+                        break
+            if last_position is not None:
                     break
-
-            if last_position:
-                latitude = last_position["lat"]
-                longitude = last_position["lon"]
-                altitude = last_position["h"]
-                heading = last_position["heading"]
-                self.web_view.page().runJavaScript(
-                    f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});"
-                )
+        last_known_time = int(self.last_known_time_for_aircraft.get(aircraft, -1))
+        if last_position and self.current_time <= last_known_time:
+            latitude = last_position["lat"]
+            longitude = last_position["lon"]
+            altitude = last_position["h"]
+            heading = last_position["heading"]
+            self.web_view.page().runJavaScript(  
+                f"updateAircraft('{aircraft}', {latitude}, {longitude}, {altitude}, {heading});"
+            )
+        else:
+        # Si no hay posición, se borra el avión de la vista
+            self.web_view.page().runJavaScript(
+                f"removeAircraft('{aircraft}');"
+        ) 
+                
 
     def create_speed_menu(self):
         speed_menu = QMenu(self)
@@ -664,15 +734,14 @@ class MainWindow(QMainWindow):
             self.timer.start(interval)
             self.play_pause_button.setText("Pause")
 
+    
     def update_simulation(self):
-        """Updates the aircraft positions based on the simulation time step."""
+        """Actualiza las posiciones de las aeronaves en cada segundo de simulación."""
         current_time_str = str(self.current_time)
-
+        
+        # Solo actualiza posiciones si `current_time` está en los datos de aeronaves
         if current_time_str in self.aircraft_data_by_time:
-            # Get all aircraft for the current time step
             aircraft_list = self.aircraft_data_by_time[current_time_str]
-
-            # Update positions for all aircraft in the list
             for aircraft in aircraft_list:
                 try:
                     latitude = aircraft["lat"]
@@ -688,35 +757,28 @@ class MainWindow(QMainWindow):
                 except Exception as e:
                     print(f"Error updating aircraft: {e}")
 
-            self.time_label.setText(
-                self.seconds_to_hhmmss(self.current_time)
-            )  # Actualiza el QLabel con el tiempo actual
+            for aircraft in self.aircraft_list:
+            # Verificar si el avión no está en el current_time_str
+                if not any(a["ti"] == aircraft for a in aircraft_list): 
+                    self.update_aircraft_positions_before_current_time(aircraft)
+              
+        # Actualizar el tiempo en la etiqueta y la barra de progreso
+        self.time_label.setText(self.seconds_to_hhmmss(self.current_time))
+        self.progress_bar.setValue(self.current_time)  # Avanza la barra de progreso en 1
 
-        # Find the next time step in the data
-        all_times = sorted(map(int, self.aircraft_data_by_time.keys()))
-        current_index = all_times.index(self.current_time)
+        self.current_time += 1
 
-        self.progress_bar.setValue(self.current_time)  # Set the slider to current time
-
-        if current_index < len(all_times) - 1:
-            next_time = all_times[current_index + 1]
-
-            # Calculate the time difference in seconds
-            time_difference = next_time - self.current_time
-
-            # Set the next update based on the time difference
-            interval = int(1000 / self.selected_speed)
-            self.timer.start(time_difference * interval)  # Adjust to speed
-
-            # Update current time to next time
-            self.current_time = next_time
-        else:
-            self.timer.stop()  # Stop the simulation when the last time step is reached
-            QMessageBox.information(
-                self, "Simulation Ended", "The simulation has completed."
-            )
+        # Verifica si hemos alcanzado el tiempo final
+        if self.current_time > int(max(self.aircraft_data_by_time.keys())):
+            self.timer.stop()
+            QMessageBox.information(self, "Simulation Ended", "The simulation has completed.")
             self.reset_simulation()
             self.play_pause_button.setText("Play")
+        else:
+            # Calcula el intervalo en función de la velocidad seleccionada
+            interval = int(1000 / self.selected_speed)
+            self.timer.start(interval)  # Ajusta la actualización según la velocidad
+
 
     def open_csv_table(self):
         """Opens a file dialog to select a CSV file and shows it in a table."""
@@ -729,19 +791,8 @@ class MainWindow(QMainWindow):
 
             # Show CSV table with data
             dialog = CSVTableDialog(csv_file_path, self, progress_dialog)
-            self.aircraft_data = dialog.aircraft_data  # Store aircraft data for simulation
-
-            self.aircraft_data_by_time = dialog.aircraft_data_by_time  # Actualiza los datos en MainWindow
-
-            if self.aircraft_data_by_time:
-                min_time = int(min(self.aircraft_data_by_time.keys()))
-                max_time = int(max(self.aircraft_data_by_time.keys()))
-                self.progress_bar.setRange(min_time, max_time)  # Ajustar rango del slider
-                self.progress_bar.setValue(min_time)  # Initial value
 
             
-            self.show_play_pause_buttons()
-
     def convert_to_csv(self):
         """Opens a file dialog to select a CSV file and shows it in a table."""
         input_file_path, _ = QFileDialog.getOpenFileName(
@@ -768,23 +819,6 @@ class MainWindow(QMainWindow):
 
             # Show CSV table with data
             dialog = CSVTableDialog(csv_file_path, self, progress_dialog)
-            self.aircraft_data = (
-                dialog.aircraft_data
-            )  # Store aircraft data for simulation
-
-            self.aircraft_data_by_time = (
-                dialog.aircraft_data_by_time
-            )  # Actualiza los datos en MainWindow
-
-            if self.aircraft_data_by_time:
-                min_time = int(min(self.aircraft_data_by_time.keys()))
-                max_time = int(max(self.aircraft_data_by_time.keys()))
-                self.progress_bar.setRange(
-                    min_time, max_time
-                )  # Ajustar rango del slider
-                self.progress_bar.setValue(min_time)  # Initial value
-
-            self.show_play_pause_buttons()
 
 
 if __name__ == "__main__":
