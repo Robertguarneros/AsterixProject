@@ -1913,67 +1913,69 @@ class CSVTableDialog(QDialog):
 
         # Loop through each row of the table widget, starting from the first row after the header
         for row_idx in range(1, self.table_widget.rowCount()):  # Skip header
+            try:
+                if self.table_widget.isRowHidden(row_idx):
+                    continue  # Skip hidden rows
 
-            if self.table_widget.isRowHidden(row_idx):
-                continue  # Skip hidden rows
+                # Retrieve each cell's data for the row
+                row_data = [
+                    (
+                        self.table_widget.item(row_idx, col_idx).text()
+                        if self.table_widget.item(row_idx, col_idx)
+                        else ""
+                    )
+                    for col_idx in range(self.table_widget.columnCount())
+                ]
 
-            # Retrieve each cell's data for the row
-            row_data = [
-                (
-                    self.table_widget.item(row_idx, col_idx).text()
-                    if self.table_widget.item(row_idx, col_idx)
-                    else ""
-                )
-                for col_idx in range(self.table_widget.columnCount())
-            ]
+                # Create an aircraft info dictionary for the current row
+                aircraft_info = {
+                    "time": row_data[time_idx],
+                    "lat": float(row_data[lat_idx].replace(",", ".")),
+                    "lon": float(row_data[lon_idx].replace(",", ".")),
+                    "ti": row_data[ti_idx],
+                    "h": float(row_data[h_idx].replace(",", ".")),
+                    "heading": float(row_data[heading_idx].replace(",", ".")),
+                }
 
-            # Create an aircraft info dictionary for the current row
-            aircraft_info = {
-                "time": row_data[time_idx],
-                "lat": float(row_data[lat_idx].replace(",", ".")),
-                "lon": float(row_data[lon_idx].replace(",", ".")),
-                "ti": row_data[ti_idx],
-                "h": float(row_data[h_idx].replace(",", ".")),
-                "heading": float(row_data[heading_idx].replace(",", ".")),
-            }
+                time = aircraft_info["time"]
+                ti = aircraft_info["ti"]
+                lat = aircraft_info["lat"]
+                lon = aircraft_info["lon"]
+                h = aircraft_info["h"]
+                heading = aircraft_info["heading"]
 
-            time = aircraft_info["time"]
-            ti = aircraft_info["ti"]
-            lat = aircraft_info["lat"]
-            lon = aircraft_info["lon"]
-            h = aircraft_info["h"]
-            heading = aircraft_info["heading"]
+                # Verificar que todos los campos sean diferentes de "N/A"
+                if (
+                    ti != "N/A"
+                    and time != "N/A"
+                    and lat != "N/A"
+                    and lon != "N/A"
+                    and h != "N/A"
+                    and heading != "N/A"
+                ):
 
-            # Verificar que todos los campos sean diferentes de "N/A"
-            if (
-                ti != "N/A"
-                and time != "N/A"
-                and lat != "N/A"
-                and lon != "N/A"
-                and h != "N/A"
-                and heading != "N/A"
-            ):
+                    # Agregar los aviones al grupo de datos por tiempo
+                    if time not in self.aircraft_data_by_time:
+                        self.aircraft_data_by_time[time] = []
+                    self.aircraft_data_by_time[time].append(aircraft_info)
 
-                # Agregar los aviones al grupo de datos por tiempo
-                if time not in self.aircraft_data_by_time:
-                    self.aircraft_data_by_time[time] = []
-                self.aircraft_data_by_time[time].append(aircraft_info)
+                    # Agregar el avión a la lista de aviones si no está ya añadido
+                    if ti not in self.aircraft_list:
+                        self.aircraft_list.add(ti)
 
-                # Agregar el avión a la lista de aviones si no está ya añadido
-                if ti not in self.aircraft_list:
-                    self.aircraft_list.add(ti)
+                    self.last_known_time_for_aircraft[ti] = str(int(time) + 3)
 
-                self.last_known_time_for_aircraft[ti] = str(int(time) + 3)
+                # Actualizar la barra de progreso
+                progress = int(
+                    (row_idx / total_rows) * 100
+                )  # Calcular el progreso en porcentaje
+                self.progress_dialog.setValue(progress)
 
-            # Actualizar la barra de progreso
-            progress = int(
-                (row_idx / total_rows) * 100
-            )  # Calcular el progreso en porcentaje
-            self.progress_dialog.setValue(progress)
-
-            # Si el usuario cierra el diálogo, interrumpimos la simulación
-            if self.progress_dialog.wasCanceled():
-                break
+                # Si el usuario cierra el diálogo, interrumpimos la simulación
+                if self.progress_dialog.wasCanceled():
+                    break
+            except Exception as e:
+                print(f"Error processing row {row_idx}: {e}")
 
         # Store the organized data in the parent for further use
         self.parent().aircraft_data_by_time = self.aircraft_data_by_time

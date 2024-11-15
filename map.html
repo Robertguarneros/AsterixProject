@@ -24,11 +24,11 @@
         // Define a custom airplane icon
         function createAirplaneIcon(heading) {
             return L.divIcon({
-                html: `<img src='./assets/airplane-10-64.ico' style='transform: rotate(${heading-90}deg); width: 43px; height: 43px;'>`,
+                html: `<img src='./assets/airplane-10-64.ico' style='transform: rotate(${heading-90}deg); width: 32px; height: 32px;'>`,
                 className: 'rotated-icon',  // Agregamos la clase para rotar
-                iconSize: [43, 43],         // Tamaño del ícono
+                iconSize: [32, 32],         // Tamaño del ícono
                 iconAnchor: [16, 16],       // Punto de anclaje del ícono
-                popupAnchor: [0, 0]         // Punto desde el cual se abre el popup
+                popupAnchor: [16, 16]         // Punto desde el cual se abre el popup
             });
         }
 
