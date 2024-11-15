@@ -11,7 +11,7 @@
 The source code of the project is organized as follows:
 
 - `assets`: contains logo and images used.
-- `App.py`: entry point of the app, also where all the GUI menu elements are defined.
+- `App.py`: entry point of the app, also where all the GUI menu elements and functions are defined.
  
 
 ## Tools Used

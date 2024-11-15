@@ -1,9 +1,12 @@
 import csv
 import ctypes
+import math
 import os
 import platform
+import re
 import sys
 
+import numpy as np
 from PyQt5.QtCore import Qt, QTimer, QUrl
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWebEngineWidgets import QWebEngineView
@@ -22,19 +25,14 @@ from PyQt5.QtWidgets import (
     QMenu,
     QMessageBox,
     QProgressBar,
+    QProgressDialog,
     QPushButton,
     QSlider,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
-    QProgressDialog
 )
-
-import math
-import re
-
-import numpy as np
 
 
 # Open and read binary
@@ -1568,6 +1566,7 @@ def convert_to_csv(input_file, output_file, progress_dialog):
     # Close the dialog when done
     progress_dialog.accept()  # Close the dialog here
 
+
 class ProgressDialog(QDialog):
     """Dialog to show the progress of CSV loading."""
 
@@ -1594,6 +1593,7 @@ class ProgressDialog(QDialog):
         """Updates the progress bar."""
         self.progress_bar.setValue(value)
 
+
 class ProgressDialog2(QDialog):
     """Dialog to show the progress of CSV loading."""
 
@@ -1619,6 +1619,7 @@ class ProgressDialog2(QDialog):
     def set_progress(self, value):
         """Updates the progress bar."""
         self.progress_bar.setValue(value)
+
 
 class CSVTableDialog(QDialog):
     """Dialog to show CSV data in a table with filtering capabilities."""
@@ -1675,8 +1676,12 @@ class CSVTableDialog(QDialog):
         # Filter options
         self.filter_combobox = QComboBox()
         self.filter_combobox.setEditable(False)  # No se puede editar el texto
-        self.filter_combobox.addItem("Active Filters: None")  # Cabecera que mostrará filtros activos
-        self.filter_combobox.model().item(0).setEnabled(False)  # Deshabilitar primera opción (cabecera)
+        self.filter_combobox.addItem(
+            "Active Filters: None"
+        )  # Cabecera que mostrará filtros activos
+        self.filter_combobox.model().item(0).setEnabled(
+            False
+        )  # Deshabilitar primera opción (cabecera)
 
         # Opciones de filtro
         self.filter_combobox.addItem("No Filter")
@@ -1695,13 +1700,21 @@ class CSVTableDialog(QDialog):
 
         # Crear ComboBox para columna de búsqueda y QLineEdit para introducir texto
         self.search_column_combobox = QComboBox()
-        self.search_column_combobox.setFixedWidth(150)  # Reducir el tamaño de la caja de texto del buscador
-        self.search_column_combobox.addItem("Searcher")  # Texto visible como placeholder
-        self.search_column_combobox.model().item(0).setEnabled(False)  # Deshabilitar este ítem para que no sea seleccionable
+        self.search_column_combobox.setFixedWidth(
+            150
+        )  # Reducir el tamaño de la caja de texto del buscador
+        self.search_column_combobox.addItem(
+            "Searcher"
+        )  # Texto visible como placeholder
+        self.search_column_combobox.model().item(0).setEnabled(
+            False
+        )  # Deshabilitar este ítem para que no sea seleccionable
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search text")
-        self.search_input.setFixedWidth(300)  # Reducir el tamaño de la caja de texto del buscador
+        self.search_input.setFixedWidth(
+            300
+        )  # Reducir el tamaño de la caja de texto del buscador
         self.search_input.textChanged.connect(self.apply_search_filter)
 
         # Crear layout para el buscador y alinearlo a la derecha
@@ -1739,19 +1752,21 @@ class CSVTableDialog(QDialog):
 
         # Add export and simulation button to layout
         expSim_layout = QHBoxLayout()
-        expSim_layout.addWidget(self.export_button)  
-        expSim_layout.addWidget(self.simulation_button)  
-        
+        expSim_layout.addWidget(self.export_button)
+        expSim_layout.addWidget(self.simulation_button)
+
         # Añadir layout al layout principal
-        layout.addLayout(expSim_layout)    
+        layout.addLayout(expSim_layout)
 
         # Load CSV data with a progress dialog
         self.load_csv_data(csv_file_path, progress_dialog)
-    
+
         # Inicializamos las filas visibles y las que ha ocultado el buscador
-        self.currently_visible_rows = set(range(self.table_widget.rowCount()))  # Todas las filas visibles al inicio
+        self.currently_visible_rows = set(
+            range(self.table_widget.rowCount())
+        )  # Todas las filas visibles al inicio
         self.search_hidden_rows = set()  # Filas ocultadas solo por el buscador
-        
+
         # Populate search column combobox with table headers
         self.populate_search_columns()
 
@@ -1785,17 +1800,24 @@ class CSVTableDialog(QDialog):
             # Restaurar solo las filas que ocultó el buscador
             for row in self.search_hidden_rows:
                 # Mostrar la fila solo si no está oculta por otros filtros
-                if row not in self.other_filters_hidden_rows and row not in self.area_hidden_rows:
+                if (
+                    row not in self.other_filters_hidden_rows
+                    and row not in self.area_hidden_rows
+                ):
                     self.table_widget.setRowHidden(row, False)
             # Limpiar el conjunto de filas ocultadas por el buscador
             self.search_hidden_rows.clear()
             return
 
         # Filtrar solo en filas actualmente visibles
-        new_search_hidden_rows = set()  # Guardamos las filas que ocultaremos en esta búsqueda
+        new_search_hidden_rows = (
+            set()
+        )  # Guardamos las filas que ocultaremos en esta búsqueda
         for row in self.currently_visible_rows:
             # Obtener el texto de la celda solo una vez para mejorar el rendimiento
-            cell_text = self.table_widget.item(row, selected_column).text().strip().lower()
+            cell_text = (
+                self.table_widget.item(row, selected_column).text().strip().lower()
+            )
 
             if search_text not in cell_text:
                 # Ocultamos la fila y la añadimos a las filas ocultadas por esta búsqueda
@@ -1803,7 +1825,11 @@ class CSVTableDialog(QDialog):
                 new_search_hidden_rows.add(row)
             else:
                 # Mostramos la fila solo si no está oculta por otros filtros
-                if row in self.search_hidden_rows and row not in self.other_filters_hidden_rows and row not in self.area_hidden_rows:
+                if (
+                    row in self.search_hidden_rows
+                    and row not in self.other_filters_hidden_rows
+                    and row not in self.area_hidden_rows
+                ):
                     self.table_widget.setRowHidden(row, False)
 
         # Actualizamos las filas ocultadas por el buscador para esta búsqueda
@@ -1813,42 +1839,61 @@ class CSVTableDialog(QDialog):
         """Exports the filtered data to a new CSV file using semicolons as the delimiter."""
         options = QFileDialog.Options()
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Save Filtered Data As", "", "CSV Files (*.csv);;All Files (*)", options=options
+            self,
+            "Save Filtered Data As",
+            "",
+            "CSV Files (*.csv);;All Files (*)",
+            options=options,
         )
 
         if file_path:
-            with open(file_path, mode='w', newline='') as file:
-                writer = csv.writer(file, delimiter=';')  # Use semicolon as delimiter
-                
+            with open(file_path, mode="w", newline="") as file:
+                writer = csv.writer(file, delimiter=";")  # Use semicolon as delimiter
+
                 # Write headers
-                headers = [self.table_widget.horizontalHeaderItem(i).text() for i in range(self.table_widget.columnCount())]
+                headers = [
+                    self.table_widget.horizontalHeaderItem(i).text()
+                    for i in range(self.table_widget.columnCount())
+                ]
                 writer.writerow(headers)
 
                 # Write filtered rows
                 for row in range(self.table_widget.rowCount()):
                     if not self.table_widget.isRowHidden(row):
                         row_data = [
-                            self.table_widget.item(row, col).text() if self.table_widget.item(row, col) else ""
+                            (
+                                self.table_widget.item(row, col).text()
+                                if self.table_widget.item(row, col)
+                                else ""
+                            )
                             for col in range(self.table_widget.columnCount())
                         ]
                         writer.writerow(row_data)
 
-            QMessageBox.information(self, "Export Successful", "Filtered data has been exported successfully.")
-        
-        self.parent().hide_play_pause_buttons()
+            QMessageBox.information(
+                self,
+                "Export Successful",
+                "Filtered data has been exported successfully.",
+            )
 
+        self.parent().hide_play_pause_buttons()
 
     def initialize_simulation(self):
 
         # Ventana de progreso
-        self.progress_dialog = QProgressDialog("Loading simulation data...", "Cancel", 0, 100, self)
+        self.progress_dialog = QProgressDialog(
+            "Loading simulation data...", "Cancel", 0, 100, self
+        )
         self.progress_dialog.setWindowModality(Qt.WindowModal)
         self.progress_dialog.setValue(0)  # Inicia en 0%
         self.progress_dialog.setMinimumDuration(0)  # Aparece inmediatamente
         self.progress_dialog.setCancelButton(None)  # Deshabilita el botón de cancelar
         self.progress_dialog.show()
 
-        headers = [self.table_widget.horizontalHeaderItem(i).text() for i in range(self.table_widget.columnCount())]
+        headers = [
+            self.table_widget.horizontalHeaderItem(i).text()
+            for i in range(self.table_widget.columnCount())
+        ]
 
         time_idx = headers.index("TIME(s)")
         lat_idx = headers.index("LAT")
@@ -1857,10 +1902,12 @@ class CSVTableDialog(QDialog):
         h_idx = headers.index("H")
         heading_idx = headers.index("HEADING")
 
-        # Dictionary to store aircraft data 
+        # Dictionary to store aircraft data
         self.aircraft_data_by_time = {}
         self.aircraft_list = set()
-        self.last_known_time_for_aircraft = {}  # Almacena el último tiempo de cada avión
+        self.last_known_time_for_aircraft = (
+            {}
+        )  # Almacena el último tiempo de cada avión
 
         total_rows = self.table_widget.rowCount()
 
@@ -1871,8 +1918,14 @@ class CSVTableDialog(QDialog):
                 continue  # Skip hidden rows
 
             # Retrieve each cell's data for the row
-            row_data = [self.table_widget.item(row_idx, col_idx).text() if self.table_widget.item(row_idx, col_idx) else ""
-                        for col_idx in range(self.table_widget.columnCount())]
+            row_data = [
+                (
+                    self.table_widget.item(row_idx, col_idx).text()
+                    if self.table_widget.item(row_idx, col_idx)
+                    else ""
+                )
+                for col_idx in range(self.table_widget.columnCount())
+            ]
 
             # Create an aircraft info dictionary for the current row
             aircraft_info = {
@@ -1892,8 +1945,15 @@ class CSVTableDialog(QDialog):
             heading = aircraft_info["heading"]
 
             # Verificar que todos los campos sean diferentes de "N/A"
-            if ti != "N/A" and time != "N/A" and lat != "N/A" and lon != "N/A" and h != "N/A" and heading != "N/A":
- 
+            if (
+                ti != "N/A"
+                and time != "N/A"
+                and lat != "N/A"
+                and lon != "N/A"
+                and h != "N/A"
+                and heading != "N/A"
+            ):
+
                 # Agregar los aviones al grupo de datos por tiempo
                 if time not in self.aircraft_data_by_time:
                     self.aircraft_data_by_time[time] = []
@@ -1904,31 +1964,34 @@ class CSVTableDialog(QDialog):
                     self.aircraft_list.add(ti)
 
                 self.last_known_time_for_aircraft[ti] = str(int(time) + 3)
-            
+
             # Actualizar la barra de progreso
-            progress = int((row_idx / total_rows) * 100)  # Calcular el progreso en porcentaje
+            progress = int(
+                (row_idx / total_rows) * 100
+            )  # Calcular el progreso en porcentaje
             self.progress_dialog.setValue(progress)
 
             # Si el usuario cierra el diálogo, interrumpimos la simulación
             if self.progress_dialog.wasCanceled():
                 break
-        
+
         # Store the organized data in the parent for further use
         self.parent().aircraft_data_by_time = self.aircraft_data_by_time
-        self.parent().aircraft_list = list(self.aircraft_list)  
+        self.parent().aircraft_list = list(self.aircraft_list)
         self.parent().last_known_time_for_aircraft = self.last_known_time_for_aircraft
 
         if self.aircraft_data_by_time:
-                min_time = int(min(self.aircraft_data_by_time.keys()))
-                max_time = int(max(self.aircraft_data_by_time.keys()))
-                self.parent().progress_bar.setRange(min_time, max_time)  # Ajustar rango del slider
-                self.parent().progress_bar.setValue(min_time)  # Initial value
-        
+            min_time = int(min(self.aircraft_data_by_time.keys()))
+            max_time = int(max(self.aircraft_data_by_time.keys()))
+            self.parent().progress_bar.setRange(
+                min_time, max_time
+            )  # Ajustar rango del slider
+            self.parent().progress_bar.setValue(min_time)  # Initial value
+
         # Cerrar el diálogo de progreso después de cargar los datos
         self.progress_dialog.close()
         self.resize(400, 300)
         self.parent().show_play_pause_buttons()
-
 
     def load_csv_data(self, csv_file_path, progress_dialog):
         """Loads data from the CSV file and displays it in the table."""
@@ -1969,7 +2032,7 @@ class CSVTableDialog(QDialog):
                 # Resize columns to fit content
                 self.table_widget.horizontalHeader().setSectionResizeMode(
                     QHeaderView.Interactive
-                ) 
+                )
 
             self.parent().hide_play_pause_buttons()
 
@@ -1978,7 +2041,6 @@ class CSVTableDialog(QDialog):
             progress_dialog.set_progress(100)
             # Close the dialog when done
             progress_dialog.accept()  # Close the dialog here
-            
 
     def apply_filters(self):
         """Applies filters based on the selected option in the combobox."""
@@ -2120,7 +2182,10 @@ class CSVTableDialog(QDialog):
                     # Verificar si las coordenadas están dentro del rango especificado
                     if lat_min <= lat <= lat_max and lon_min <= lon <= lon_max:
                         # Solo mostrar la fila si no está oculta por otros filtros
-                        if row not in self.other_filters_hidden_rows and row not in self.search_hidden_rows:
+                        if (
+                            row not in self.other_filters_hidden_rows
+                            and row not in self.search_hidden_rows
+                        ):
                             self.table_widget.setRowHidden(row, False)
                     else:
                         # Ocultar la fila y agregarla a las ocultadas por el filtro de área
@@ -2143,7 +2208,6 @@ class CSVTableDialog(QDialog):
             f"  • <b>Longitude Range:</b> Min {lon_min}° - Max {lon_max}°"
         )
 
-
     def reset_area_filter(self):
         """Resets only the area filter and updates the table visibility."""
         # Limpiar el conjunto de filas ocultadas solo por el filtro de área
@@ -2152,7 +2216,10 @@ class CSVTableDialog(QDialog):
 
         # Restaurar solo las filas ocultadas por el filtro de área sin afectar a las filas de otros filtros
         for row in range(self.table_widget.rowCount()):
-            if row not in self.other_filters_hidden_rows and row not in self.search_hidden_rows:
+            if (
+                row not in self.other_filters_hidden_rows
+                and row not in self.search_hidden_rows
+            ):
                 self.table_widget.setRowHidden(row, False)
 
         # Restablecer los campos de entrada y la etiqueta de filtro de área activo
@@ -2255,12 +2322,10 @@ class MainWindow(QMainWindow):
         for i in range(self.control_layout.count()):
             self.control_layout.itemAt(i).widget().setVisible(True)
 
-
     def hide_play_pause_buttons(self):
         """Shows the Play/Pause button once the simulation is initialized."""
         for i in range(self.control_layout.count()):
             self.control_layout.itemAt(i).widget().setVisible(False)
-
 
     def seek_simulation(self, value):
         """Busca un tiempo específico en la simulación basado en el valor del slider."""
@@ -2269,7 +2334,6 @@ class MainWindow(QMainWindow):
             self.web_view.page().runJavaScript(r"clearAircraft()")
 
         self.time_label.setText(self.seconds_to_hhmmss(value))
-
 
     def update_aircraft_positions_before_current_time(self, aircraft):
         """Actualiza la posición de la aeronave al último punto conocido antes del current_time."""
@@ -2285,29 +2349,35 @@ class MainWindow(QMainWindow):
                         last_position = a
                         break
             if last_position is not None:
-                    break
+                break
         last_known_time = int(self.last_known_time_for_aircraft.get(aircraft, -1))
         if last_position and self.current_time <= last_known_time:
             latitude = last_position["lat"]
             longitude = last_position["lon"]
             altitude = last_position["h"]
             heading = last_position["heading"]
-            self.web_view.page().runJavaScript(  
+            self.web_view.page().runJavaScript(
                 f"updateAircraft('{aircraft}', {latitude}, {longitude}, {altitude}, {heading});"
             )
         else:
-        # Si no hay posición, se borra el avión de la vista
-            self.web_view.page().runJavaScript(
-                f"removeAircraft('{aircraft}');"
-        ) 
-                
+            # Si no hay posición, se borra el avión de la vista
+            self.web_view.page().runJavaScript(f"removeAircraft('{aircraft}');")
 
     def create_speed_menu(self):
         speed_menu = QMenu(self)
         speed_group = QActionGroup(self)  # Create an action group for the speed options
 
         # Define speed options
-        speeds = [("x0.5", 0.5), ("x1", 1), ("x2", 2), ("x4", 4), ("x8", 8), ("x16", 16), ("x32", 32), ("x50", 50)]
+        speeds = [
+            ("x0.5", 0.5),
+            ("x1", 1),
+            ("x2", 2),
+            ("x4", 4),
+            ("x8", 8),
+            ("x16", 16),
+            ("x32", 32),
+            ("x50", 50),
+        ]
 
         for label, value in speeds:
             action = QAction(label, self, checkable=True)
@@ -2387,11 +2457,10 @@ class MainWindow(QMainWindow):
             self.timer.start(interval)
             self.play_pause_button.setText("Pause")
 
-    
     def update_simulation(self):
         """Actualiza las posiciones de las aeronaves en cada segundo de simulación."""
         current_time_str = str(self.current_time)
-        
+
         # Solo actualiza posiciones si `current_time` está en los datos de aeronaves
         if current_time_str in self.aircraft_data_by_time:
             aircraft_list = self.aircraft_data_by_time[current_time_str]
@@ -2411,20 +2480,24 @@ class MainWindow(QMainWindow):
                     print(f"Error updating aircraft: {e}")
 
             for aircraft in self.aircraft_list:
-            # Verificar si el avión no está en el current_time_str
-                if not any(a["ti"] == aircraft for a in aircraft_list): 
+                # Verificar si el avión no está en el current_time_str
+                if not any(a["ti"] == aircraft for a in aircraft_list):
                     self.update_aircraft_positions_before_current_time(aircraft)
-              
+
         # Actualizar el tiempo en la etiqueta y la barra de progreso
         self.time_label.setText(self.seconds_to_hhmmss(self.current_time))
-        self.progress_bar.setValue(self.current_time)  # Avanza la barra de progreso en 1
+        self.progress_bar.setValue(
+            self.current_time
+        )  # Avanza la barra de progreso en 1
 
         self.current_time += 1
 
         # Verifica si hemos alcanzado el tiempo final
         if self.current_time > int(max(self.aircraft_data_by_time.keys())):
             self.timer.stop()
-            QMessageBox.information(self, "Simulation Ended", "The simulation has completed.")
+            QMessageBox.information(
+                self, "Simulation Ended", "The simulation has completed."
+            )
             self.reset_simulation()
             self.play_pause_button.setText("Play")
         else:
@@ -2432,10 +2505,11 @@ class MainWindow(QMainWindow):
             interval = int(1000 / self.selected_speed)
             self.timer.start(interval)  # Ajusta la actualización según la velocidad
 
-
     def open_csv_table(self):
         """Opens a file dialog to select a CSV file and shows it in a table."""
-        csv_file_path, _ = QFileDialog.getOpenFileName(self, "Open CSV File", "", "CSV Files (*.csv);;All Files (*)")
+        csv_file_path, _ = QFileDialog.getOpenFileName(
+            self, "Open CSV File", "", "CSV Files (*.csv);;All Files (*)"
+        )
 
         if csv_file_path:
             # Show progress dialog during the loading
@@ -2444,8 +2518,8 @@ class MainWindow(QMainWindow):
 
             # Show CSV table with data
             dialog = CSVTableDialog(csv_file_path, self, progress_dialog)
+            dialog.show()
 
-            
     def convert_to_csv_button(self):
         """Opens a file dialog to select a CSV file and shows it in a table."""
         input_file_path, _ = QFileDialog.getOpenFileName(
@@ -2458,8 +2532,12 @@ class MainWindow(QMainWindow):
         )
         if csv_file_path == "":
             return
-        
-        QMessageBox.information(self, "Conversion Started", "The conversion process has started. This may take a while.")
+
+        QMessageBox.information(
+            self,
+            "Conversion Started",
+            "The conversion process has started. This may take a while.",
+        )
 
         # Show progress dialog during the loading
         progress_dialog2 = ProgressDialog2(self)
@@ -2467,7 +2545,9 @@ class MainWindow(QMainWindow):
 
         convert_to_csv(input_file_path, csv_file_path, progress_dialog2)
 
-        QMessageBox.information(self, "Conversion Successful", "The file has been converted successfully.")
+        QMessageBox.information(
+            self, "Conversion Successful", "The file has been converted successfully."
+        )
 
         if csv_file_path:
             # Show progress dialog during the loading
@@ -2476,6 +2556,7 @@ class MainWindow(QMainWindow):
 
             # Show CSV table with data
             dialog = CSVTableDialog(csv_file_path, self, progress_dialog)
+            dialog.show()
 
 
 if __name__ == "__main__":
