@@ -241,6 +241,7 @@ class CSVTableDialog(QDialog):
 
     def export_filtered_data(self):
         """Exports the filtered data to a new CSV file using semicolons as the delimiter."""
+        self.search_input.clear()  # Limpiar texto del buscador para q no afecte a lo q exportas
         options = QFileDialog.Options()
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Save Filtered Data As", "", "CSV Files (*.csv);;All Files (*)", options=options
