@@ -24,11 +24,11 @@
         // Define a custom airplane icon
         function createAirplaneIcon(heading) {
             return L.divIcon({
-                html: `<img src='./assets/airplane-10-64.ico' style='transform: rotate(${heading-90}deg); width: 43px; height: 43px;'>`,
+                html: `<img src='./assets/airplane-10-64.ico' style='transform: rotate(${heading-90}deg); width: 32px; height: 32px;'>`,
                 className: 'rotated-icon',  // Agregamos la clase para rotar
-                iconSize: [43, 43],         // Tamaño del ícono
+                iconSize: [32, 32],         // Tamaño del ícono
                 iconAnchor: [16, 16],       // Punto de anclaje del ícono
-                popupAnchor: [0, 0]         // Punto desde el cual se abre el popup
+                popupAnchor: [16, 16]         // Punto desde el cual se abre el popup
             });
         }
 
@@ -36,7 +36,7 @@
 
         function addAircraft(latitude, longitude, ti, altitude, heading) {
             var marker = L.marker([latitude, longitude], { icon: createAirplaneIcon(heading) }).addTo(map);
-            marker.bindPopup("TI: " + ti + "<br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);
+            marker.bindPopup("<b>" + ti + "</b><br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);
             marker.on('click', function () {
                 marker.openPopup();
             });
@@ -53,7 +53,7 @@
                 marker.setLatLng([latitude, longitude]);
                 // Update the marker's icon with the new heading
                 marker.setIcon(createAirplaneIcon(heading));
-                marker.bindPopup("TI: " + ti + "<br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);  // Update popup
+                marker.bindPopup("<b>" + ti + "</b><br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);
             } else {
                 // If the aircraft doesn't exist, add it
                 addAircraft(latitude, longitude, ti, altitude, heading);
@@ -70,6 +70,15 @@
             }
             aircraftMarkers = {};
         }
+
+        function removeAircraft(ti) {
+            var marker = findAircraftByTi(ti);
+            if (marker) {
+                map.removeLayer(marker);  // Elimina el marcador del mapa
+                delete aircraftMarkers[ti];  // Elimina el marcador del diccionario
+            }
+        }
+
     </script>
 </body>
 </html>
