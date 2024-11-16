@@ -1025,7 +1025,6 @@ def cartesian_to_geocentric(cartesian_coords, radar_coords):
     geocentric_coords = rotated_vector + translation_matrix
     return geocentric_coords
 
-
 def geocentric_to_geodesic(c):
     """
     Converts geocentric (x, y, z) to geodetic coordinates (latitude, longitude, height).
@@ -1056,6 +1055,19 @@ def geocentric_to_geodesic(c):
 
     return np.degrees(lat), np.degrees(lon), alt
 
+def geodesic_to_geocentric(lat, lon, alt):
+    """
+    Converts geodetic coordinates (latitude, longitude, height) to geocentric (x, y, z).
+    """
+
+    lat_rad = np.radians(lat)
+    lon_rad = np.radians(lon)
+    nu = A / np.sqrt(1 - E2 * np.sin(lat_rad) ** 2)
+    
+    x = (nu + alt) * np.cos(lat_rad) * np.cos(lon_rad)
+    y = (nu + alt) * np.cos(lat_rad) * np.sin(lon_rad)
+    z = (nu * (1 - E2) + alt) * np.sin(lat_rad)
+    return np.array([x, y, z])
 
 def get_rotation_matrix(lat, lon):
     lat_rad = np.radians(lat)
@@ -1076,7 +1088,7 @@ def get_translation_vector(lat, lon, alt):
         [(nu * (1 - E2) + alt) * np.sin(lat_rad)]
     ])
 
-def geocentric2system_cartesian(geocentric_coords):
+def geocentric_to_system_cartesian(geocentric_coords):
     geo = {'X': geocentric_coords[0], 'Y': geocentric_coords[1], 'Z': geocentric_coords[2]}  
     center = {'Lat': 41.10904, 'Lon': 1.226947, 'Alt': 3438.954}
     R = get_rotation_matrix(center['Lat'], center['Lon'])
@@ -1091,7 +1103,7 @@ def geocentric2system_cartesian(geocentric_coords):
         'Z': result_vector[2, 0]
     }
 
-def system_cartesian2system_stereographical(c):
+def system_cartesian_to_system_stereographical(c):
     class CoordinatesUVH:
         def __init__(self):
             self.U = 0
@@ -1118,11 +1130,15 @@ def system_cartesian2system_stereographical(c):
         'Height': res.Height
     }
 
+def get_stereographical_from_lat_lon_alt(lat,lon,alt):
+    geocentric_coords = geodesic_to_geocentric(lat, lon, alt)
+    cartesian_coords = geocentric_to_system_cartesian(geocentric_coords)
+    stereographical_coords = system_cartesian_to_system_stereographical(cartesian_coords)
+    return stereographical_coords
 
 def calculate_distance(U1, V1, U2, V2):
     distance = np.sqrt((U1 - U2)**2 + (V1 - V2)**2) / 1852
     return distance
-
 
 # Function that processes all the data items in a single line
 def convert_to_csv(input_file, output_file, progress_dialog):
@@ -1456,12 +1472,11 @@ def convert_to_csv(input_file, output_file, progress_dialog):
                     )  # Rho in meters, theta in radians, elevation in radians
 
                     cartesian_coords = polar_to_cartesian(*polar_coords)
-                    print(cartesian_coords)
                     geocentric_coords = cartesian_to_geocentric(
                         cartesian_coords, radar_coords
                     )
                     lat, lon, alt = geocentric_to_geodesic(geocentric_coords)
-
+                
                     new_csv_line = new_csv_line.replace(
                         "LAT;LON;H", str(lat) + ";" + str(lon) + ";" + str(alt)
                     )
@@ -1994,7 +2009,7 @@ class CSVTableDialog(QDialog):
                     )
                     for col_idx in range(self.table_widget.columnCount())
                 ]
-
+                stereographical_coords = get_stereographical_from_lat_lon_alt(float(row_data[lat_idx]), float(row_data[lon_idx]), float(row_data[h_idx]))
                 # Create an aircraft info dictionary for the current row
                 aircraft_info = {
                     "time": row_data[time_idx],
@@ -2003,6 +2018,8 @@ class CSVTableDialog(QDialog):
                     "ti": row_data[ti_idx],
                     "h": float(row_data[h_idx].replace(",", ".")),
                     "heading": float(row_data[heading_idx].replace(",", ".")),
+                    "U": float(stereographical_coords["U"]),
+                    "V": float(stereographical_coords["V"])
                 }
 
                 time = aircraft_info["time"]
@@ -2318,7 +2335,7 @@ class MainWindow(QMainWindow):
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
         # This allows us to set the icon for all the title bars and popups
-        icon_path = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
+        icon_path = os.path.join(os.path.dirname(__file__), "assets", "logo_eurocontrol.png")
         self.setWindowIcon(QIcon(icon_path))
 
         # Create main menu
@@ -2337,7 +2354,7 @@ class MainWindow(QMainWindow):
         # Create submenu for help
         help_menu = main_menu.addMenu("Help")
         help_menu.addAction("Manual")
-        help_menu.addAction("About")
+        help_menu.addAction("About", self.about_button)
 
         # Add map
         self.web_view = QWebEngineView()
@@ -2627,6 +2644,14 @@ class MainWindow(QMainWindow):
             # Show CSV table with data
             dialog = CSVTableDialog(csv_file_path, self, progress_dialog)
             dialog.show()
+
+    def about_button(self):
+        """Shows an About dialog with information about the application."""
+        QMessageBox.about(self,
+            "About Asterix Decoder",
+            "Asterix Decoder is a tool to convert, visualize and simulate ASTERIX data.\n\n"
+            "Created by:\n\nRoberto Guarneros\nAngela Nuñez\nDavid Garcia\n\n"
+            "Version: 1.0\n")
 
 
 if __name__ == "__main__":
