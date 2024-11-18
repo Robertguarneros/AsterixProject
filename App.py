@@ -8,7 +8,7 @@ import sys
 
 import numpy as np
 from PyQt5.QtCore import Qt, QTimer, QUrl
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import (
     QAction,
@@ -1986,14 +1986,15 @@ class CSVTableDialog(QDialog):
 
     def initialize_simulation(self):
 
-        # Ventana de progreso
+         # Ventana de progreso
         self.progress_dialog = QProgressDialog(
-            "Loading simulation data...", "Cancel", 0, 100, self
+            "Loading simulation data, please wait...", "Cancel", 0, 100, self
         )
         self.progress_dialog.setWindowModality(Qt.WindowModal)
         self.progress_dialog.setValue(0)  # Inicia en 0%
         self.progress_dialog.setMinimumDuration(0)  # Aparece inmediatamente
         self.progress_dialog.setCancelButton(None)  # Deshabilita el botón de cancelar
+        self.progress_dialog.setWindowTitle("Loading Data Simulation")
         self.progress_dialog.show()
 
         headers = [
@@ -2033,9 +2034,9 @@ class CSVTableDialog(QDialog):
                     for col_idx in range(self.table_widget.columnCount())
                 ]
                 stereographical_coords = get_stereographical_from_lat_lon_alt(
-                    float(row_data[lat_idx]),
-                    float(row_data[lon_idx]),
-                    float(row_data[h_idx]),
+                    float(row_data[lat_idx].replace(",", ".")),
+                    float(row_data[lon_idx].replace(",", ".")),
+                    float(row_data[h_idx].replace(",", ".")),
                 )
                 # Create an aircraft info dictionary for the current row
                 aircraft_info = {
@@ -2078,9 +2079,7 @@ class CSVTableDialog(QDialog):
                     self.last_known_time_for_aircraft[ti] = str(int(time) + 3)
 
                 # Actualizar la barra de progreso
-                progress = int(
-                    (row_idx / total_rows) * 100
-                )  # Calcular el progreso en porcentaje
+                progress = int((row_idx / total_rows) * 100)  # Calcular el progreso en porcentaje
                 self.progress_dialog.setValue(progress)
 
                 # Si el usuario cierra el diálogo, interrumpimos la simulación
@@ -2105,7 +2104,7 @@ class CSVTableDialog(QDialog):
         # Cerrar el diálogo de progreso después de cargar los datos
         self.progress_dialog.close()
         self.resize(400, 300)
-        self.parent().show_play_pause_buttons()
+        self.parent().show_simulation_buttons()
 
     def load_csv_data(self, csv_file_path, progress_dialog):
         """Loads data from the CSV file and displays it in the table."""
@@ -2148,7 +2147,7 @@ class CSVTableDialog(QDialog):
                     QHeaderView.Interactive
                 )
 
-            self.parent().hide_play_pause_buttons()
+            self.parent().hide_simulation_buttons()
 
         # Set progress to 100% when done
         if progress_dialog:
@@ -2351,6 +2350,7 @@ class MainWindow(QMainWindow):
 
         self.aircraft_data_by_time = {}
         self.selected_speed = 1  # Store selected speed; default is 1x
+        self.selected_tis = {}
 
         # Create a central widget
         central_widget = QWidget(self)
@@ -2400,15 +2400,85 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(central_widget)
         layout.addWidget(self.web_view)
 
+        self.distance_layout = QVBoxLayout()
+        self.distance_input = QHBoxLayout()
+
+        # Label and input for Aircraft 1
+        self.distance_input.addWidget(QLabel("TI Aircraft 1:"))  # Label for TI Aircraft 1
+        self.ti1_input = QLineEdit()  # Input field for TI Aircraft 1
+        self.ti1_input.setPlaceholderText("Enter TI of Aircraft 1")
+        self.distance_input.addWidget(self.ti1_input)
+
+        # Label and input for Aircraft 2
+        self.distance_input.addWidget(QLabel("TI Aircraft 2:"))  # Label for TI Aircraft 2
+        self.ti2_input = QLineEdit()  # Input field for TI Aircraft 2
+        self.ti2_input.setPlaceholderText("Enter TI of Aircraft 2")
+        self.distance_input.addWidget(self.ti2_input)
+
+        # Button to calculate the distance
+        self.calculate_distance_button = QPushButton("Calculate Distance")
+        self.calculate_distance_button.setFixedWidth(500)
+        self.calculate_distance_button.clicked.connect(self.calculate_distance_between_aircraft)
+        self.distance_input.addWidget(self.calculate_distance_button)
+
+        self.distance_layout.addLayout(self.distance_input)
+        for i in range(self.distance_input.count()):
+            self.distance_input.itemAt(i).widget().setVisible(False)
+
+        # Table for displaying distances
+        self.distance_table = QTableWidget()
+        self.distance_table.setRowCount(3)
+        self.distance_table.setColumnCount(5)  # Columns: TI, Latitude, Longitude, Altitude, Distance
+        self.distance_table.setHorizontalHeaderLabels(["TI", "Latitude", "Longitude", "Altitude", "Distance"])
+        self.distance_table.setVisible(False)  # Initially hidde
+        self.distance_table.verticalHeader().setVisible(False)
+
+        row_height = self.distance_table.rowHeight(0)  # Get the height of one row
+        total_height = 3 * row_height - 7  # Calculate the total height based on the rows
+        column_width = 160  # Definir un ancho común para todas las columnas
+
+        header = self.distance_table.horizontalHeader()
+        for col in range(self.distance_table.columnCount()):
+            header.setSectionResizeMode(col, QHeaderView.Stretch)
+
+        self.distance_table.setFixedHeight(total_height)
+
+        # Apply bold font to the header
+        header_font = QFont()
+        header_font.setBold(True)
+        for col in range(self.distance_table.columnCount()):
+            self.distance_table.horizontalHeaderItem(col).setFont(header_font)
+
+        self.distance_layout.addWidget(self.distance_table)  
+
+        # Message labels below the table
+        self.message_label1 = QLabel("")  # First message label
+        self.message_label1.setStyleSheet("color: red;")  # Red color for warnings
+        self.message_label1.setMaximumHeight(37)
+        self.message_label1.setVisible(False)  # Initially hidden
+        self.distance_layout.addWidget(self.message_label1)
+
+        self.message_label2 = QLabel("")  # Second message label
+        self.message_label2.setStyleSheet("color: red;")  # Red color for warnings
+        self.message_label2.setMaximumHeight(37)
+        self.message_label2.setVisible(False)  # Initially hidden
+        self.distance_layout.addWidget(self.message_label2)
+
+        # Button to undo the selection
+        self.undo_selection_button = QPushButton("Undo Selection")
+        self.undo_selection_button.clicked.connect(self.undo_selection)
+        self.undo_selection_button.setVisible(False)  # Initially hidden
+        self.distance_layout.addWidget(self.undo_selection_button)
+
+        layout.addLayout(self.distance_layout)
+        
         self.control_layout = QHBoxLayout()
 
         # Create a single button for Play/Pause functionality
         self.play_pause_button = QPushButton()
         self.play_pause_button.setText("Play")  # Set initial text to "Play"
         self.play_pause_button.clicked.connect(self.toggle_simulation)
-        self.control_layout.addWidget(
-            self.play_pause_button
-        )  # Add the button to the layout
+        self.control_layout.addWidget(self.play_pause_button)  # Add the button to the layout
 
         # Create a single button for Play/Pause functionality
         self.reset_button = QPushButton()
@@ -2433,18 +2503,122 @@ class MainWindow(QMainWindow):
         for i in range(self.control_layout.count()):
             self.control_layout.itemAt(i).widget().setVisible(False)
 
-    def show_play_pause_buttons(self):
+
+    def undo_selection(self):
+        self.distance_table.setVisible(False)
+        self.undo_selection_button.setVisible(False)
+        self.selected_tis = {}
+        self.ti1_input.clear()
+        self.ti2_input.clear()
+        self.message_label1.setText("")  
+        self.message_label1.setVisible(False)
+        self.message_label2.setText("")  
+        self.message_label2.setVisible(False)
+
+
+    def calculate_distance_between_aircraft(self):
+        """Calculate the distance between two aircraft based on their TIs."""
+        ti1 = self.ti1_input.text().strip()
+        ti2 = self.ti2_input.text().strip()
+
+        # Check if both TIs are entered
+        if not ti1 or not ti2:
+            QMessageBox.warning(self, "Input Error", "Please enter both TI values.")
+            return
+
+        # Ensure the TIs are not the same
+        if ti1 == ti2:
+            QMessageBox.warning(self, "Input Error", "Please enter two different aircrafts.")
+            return
+
+        # Verify that both TIs exist in the data
+        if ti1 not in self.aircraft_list or ti2 not in self.aircraft_list:
+            QMessageBox.warning(self, "Input Error", "One or both TIs do not exist in the data.")
+            return 
+
+        self.selected_tis = (ti1, ti2)
+
+        # Clear aircraft from the map view
+        self.web_view.page().runJavaScript(r"clearAircraft()")
+
+        # Get data for each aircraft
+        aircraft1_data = self.update_aircraft_positions_before_current_time(ti1)
+        aircraft2_data = self.update_aircraft_positions_before_current_time(ti2)
+
+        # Prepare the table to display results
+        self.distance_table.setRowCount(2)  
+        self.distance_table.setVisible(True)
+        self.undo_selection_button.setVisible(True)
+
+        # Update row 1 (aircraft 1)
+        self.update_table_row(0, ti1, aircraft1_data)
+
+        # Update row 2 (aircraft 2)
+        self.update_table_row(1, ti2, aircraft2_data)
+
+        # Calculate distance if both data points exist
+        distance = None
+        if aircraft1_data and aircraft2_data:
+            distance = self.calculate_dynamic_distance(aircraft1_data, aircraft2_data)
+
+        # Update the distance column (a single cell spanning both rows)
+        self.update_distance_cell(distance)
+        
+
+    def update_table_row(self, row, ti, aircraft_data):
+        """Helper function to update a row in the distance table."""
+        if aircraft_data:
+            lat, lon, alt = aircraft_data["lat"], aircraft_data["lon"], aircraft_data["h"]
+        else:
+            lat, lon, alt = "N/A", "N/A", "N/A"
+
+        # Update the cells in the row
+        self.distance_table.setItem(row, 0, QTableWidgetItem(ti))
+        self.distance_table.setItem(row, 1, QTableWidgetItem(str(lat)))
+        self.distance_table.setItem(row, 2, QTableWidgetItem(str(lon)))
+        self.distance_table.setItem(row, 3, QTableWidgetItem(str(alt)))
+
+        # Ensure the cells are read-only
+        for col in range(4):
+            item = self.distance_table.item(row, col)
+            item.setTextAlignment(Qt.AlignCenter)  # Center-align text
+            item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+
+
+    def update_distance_cell(self, distance):
+        """Update the combined cell for distance in the table."""
+        self.distance_table.setSpan(0, 4, 2, 1)  # Merge the cell in column 4 for both rows
+        distance_text = f"{distance:.2f}" if distance is not None else "N/A"
+        
+        # Create the table widget item
+        distance_item = QTableWidgetItem(distance_text)
+        distance_item.setTextAlignment(Qt.AlignCenter)
+        distance_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+        
+        font = QFont()
+        font.setPointSize(12)  
+        distance_item.setFont(font)
+        
+        # Set the item in the table
+        self.distance_table.setItem(0, 4, distance_item)
+
+
+    def show_simulation_buttons(self):
         """Shows the Play/Pause button once the simulation is initialized."""
         for i in range(self.control_layout.count()):
             self.control_layout.itemAt(i).widget().setVisible(True)
+        for i in range(self.distance_input.count()):
+            self.distance_input.itemAt(i).widget().setVisible(True)
 
-    def hide_play_pause_buttons(self):
+    def hide_simulation_buttons(self):
         """Shows the Play/Pause button once the simulation is initialized."""
         for i in range(self.control_layout.count()):
             self.control_layout.itemAt(i).widget().setVisible(False)
+        for i in range(self.distance_input.count()):
+            self.distance_input.itemAt(i).widget().setVisible(False)
 
     def seek_simulation(self, value):
-        """Busca un tiempo específico en la simulación basado en el valor del slider."""
+        """Searches for a specific time in the simulation based on the slider value."""
         self.current_time = value
         if self.current_time == int(min(self.aircraft_data_by_time.keys())):
             self.web_view.page().runJavaScript(r"clearAircraft()")
@@ -2452,7 +2626,7 @@ class MainWindow(QMainWindow):
         self.time_label.setText(self.seconds_to_hhmmss(value))
 
     def update_aircraft_positions_before_current_time(self, aircraft):
-        """Actualiza la posición de la aeronave al último punto conocido antes del current_time."""
+        """Updates the aircraft's position to the last known point before the current_time."""
         all_times = sorted(map(int, self.aircraft_data_by_time.keys()))
 
         last_position = None
@@ -2466,18 +2640,17 @@ class MainWindow(QMainWindow):
                         break
             if last_position is not None:
                 break
+                
         last_known_time = int(self.last_known_time_for_aircraft.get(aircraft, -1))
+        
         if last_position and self.current_time <= last_known_time:
-            latitude = last_position["lat"]
-            longitude = last_position["lon"]
-            altitude = last_position["h"]
-            heading = last_position["heading"]
-            self.web_view.page().runJavaScript(
-                f"updateAircraft('{aircraft}', {latitude}, {longitude}, {altitude}, {heading});"
-            )
+            self.update_aircraft_on_map(aircraft, last_position)
+            return last_position
+
         else:
-            # Si no hay posición, se borra el avión de la vista
+            # If no known position exists, the aircraft is removed from the view
             self.web_view.page().runJavaScript(f"removeAircraft('{aircraft}');")
+            return
 
     def create_speed_menu(self):
         speed_menu = QMenu(self)
@@ -2574,41 +2747,58 @@ class MainWindow(QMainWindow):
             self.play_pause_button.setText("Pause")
 
     def update_simulation(self):
-        """Actualiza las posiciones de las aeronaves en cada segundo de simulación."""
+        """Updates the positions of the aircraft every second of the simulation."""
         current_time_str = str(self.current_time)
 
-        # Solo actualiza posiciones si `current_time` está en los datos de aeronaves
-        if current_time_str in self.aircraft_data_by_time:
-            aircraft_list = self.aircraft_data_by_time[current_time_str]
-            for aircraft in aircraft_list:
-                try:
-                    latitude = aircraft["lat"]
-                    longitude = aircraft["lon"]
-                    ti = aircraft["ti"]
-                    altitude = aircraft["h"]
-                    heading = aircraft["heading"]
+        if self.selected_tis:
+            # If there are selected TIs, only update those aircraft
+            ti1, ti2 = self.selected_tis
 
-                    if ti != "N/A":
-                        self.web_view.page().runJavaScript(
-                            f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});"
-                        )
-                except Exception as e:
-                    print(f"Error updating aircraft: {e}")
+            # Get data for the selected aircraft
+            aircraft1_data = self.update_aircraft_positions_before_current_time(ti1)
+            aircraft2_data = self.update_aircraft_positions_before_current_time(ti2)
 
-            for aircraft in self.aircraft_list:
-                # Verificar si el avión no está en el current_time_str
-                if not any(a["ti"] == aircraft for a in aircraft_list):
-                    self.update_aircraft_positions_before_current_time(aircraft)
+            if aircraft1_data:
+                self.message_label1.setText("")  # Clear the message if everything is fine
+                self.message_label1.setVisible(False)
+            else:
+                self.message_label1.setText(f"Aircraft {ti1} is out of bounds.")
+                self.message_label1.setVisible(True)
 
-        # Actualizar el tiempo en la etiqueta y la barra de progreso
+            if aircraft2_data:
+                self.message_label2.setText("")  # Clear the message if everything is fine
+                self.message_label2.setVisible(False)
+            else:
+                self.message_label2.setText(f"Aircraft {ti2} is out of bounds.")
+                self.message_label2.setVisible(True)
+
+            # Update the positions of the selected aircraft
+            self.update_table_row(0, ti1, aircraft1_data)
+            self.update_table_row(1, ti2, aircraft2_data)
+
+            # Calculate distance and update the table
+            distance = self.calculate_dynamic_distance(aircraft1_data, aircraft2_data)
+            self.update_distance_cell(distance)
+
+        else:
+            # Original logic if no aircraft are selected
+            if current_time_str in self.aircraft_data_by_time:
+                aircraft_list = self.aircraft_data_by_time[current_time_str]
+                for aircraft in aircraft_list:
+                        ti = aircraft["ti"]
+                        self.update_aircraft_on_map(ti, aircraft)
+
+                for aircraft in self.aircraft_list:
+                    # Check if the aircraft is not in the current_time_str
+                    if not any(a["ti"] == aircraft for a in aircraft_list):
+                        self.update_aircraft_positions_before_current_time(aircraft)
+
+        # Update time label and progress bar
         self.time_label.setText(self.seconds_to_hhmmss(self.current_time))
-        self.progress_bar.setValue(
-            self.current_time
-        )  # Avanza la barra de progreso en 1
+        self.progress_bar.setValue(self.current_time)
 
+        # Increment the time and check for the end of the simulation
         self.current_time += 1
-
-        # Verifica si hemos alcanzado el tiempo final
         if self.current_time > int(max(self.aircraft_data_by_time.keys())):
             self.timer.stop()
             QMessageBox.information(
@@ -2617,9 +2807,36 @@ class MainWindow(QMainWindow):
             self.reset_simulation()
             self.play_pause_button.setText("Play")
         else:
-            # Calcula el intervalo en función de la velocidad seleccionada
+            # Adjust the interval according to the selected speed
             interval = int(1000 / self.selected_speed)
-            self.timer.start(interval)  # Ajusta la actualización según la velocidad
+            self.timer.start(interval)
+
+
+    def update_aircraft_on_map(self, ti, aircraft_data):
+        """Helper function to update a specific aircraft on the map."""
+        try:
+            latitude = aircraft_data["lat"]
+            longitude = aircraft_data["lon"]
+            altitude = aircraft_data["h"]
+            heading = aircraft_data["heading"]
+
+            self.web_view.page().runJavaScript(
+                f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});"
+            )
+        except Exception as e:
+                        print(f"Error updating aircraft: {e}")
+
+        
+    def calculate_dynamic_distance(self, aircraft1_data, aircraft2_data):
+        """Calculate the 3D distance between two aircraft."""
+        distance =  None
+        if aircraft1_data and aircraft2_data:
+            u1, v1 = aircraft1_data["U"], aircraft1_data["V"]
+            u2, v2 = aircraft2_data["U"], aircraft2_data["V"]
+
+            # Fórmula de distancia en 3D
+            distance = calculate_distance(u1, v1, u2, v2)
+        return distance
 
     def open_csv_table(self):
         """Opens a file dialog to select a CSV file and shows it in a table."""
