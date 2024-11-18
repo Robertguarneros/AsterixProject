@@ -18,8 +18,9 @@ The source code of the project is organized as follows:
 
 We are also using the following tools:
 - `isort`: to order imports alphabetically, use with `isort .`
-- `flake8`: linting tool, use with `flake8 .`
 - `black`: formatter, use with `black .`
+- `flake8`: linting tool, use with `flake8 .`
+
 
 ## Requirements
 To generate requirement list use:
