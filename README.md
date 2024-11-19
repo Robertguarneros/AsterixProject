@@ -48,7 +48,7 @@ For the conversion we use the following structure to transform from the Asterix 
 
 For the decoding of each data item:
 ```mermaid
-flowchart LR
+flowchart TD
     R(Process Data Item)
     R --> Q{Is Data Item 010 Present?}
     Q --> |Yes |S(Extract SAC and SIC and add to CSV line)
