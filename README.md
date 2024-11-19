@@ -1,46 +1,33 @@
 # AsterixProject
+## Overview of Project
+We have developed the following planning
+```mermaid
+gantt
+    title Planning
+    dateFormat  DD-MM-YYYY
 
-## First time installing Project
-1. Clone repo: `git clone https://github.com/Robertguarneros/AsterixProject.git`
-2. Change into the project directory 
-3. Install the dependencies: `pip install -r requirements.txt`
-4. Run proyect
+    section Planning
+    Understanding the Project :a1, 2024-09-23, 3d
+    Select tools (Github, Python)   :a2, after a1, 2d
+    Create project plan   :a3, after a2, 2d
 
-## Project Structure
+    section Development
+    Create repository   :b1, 2024-09-30, 1d
+    Create blank project :b2, after b1, 1d
+    Decode Data Items Individually  :b3, after b2, 7d
+    Combine Data Items into a single function :b4, after b3, 7d
+    Decode button :b5, after b3, 14d
+    Simulation :b6, after b3, 21d
+    CSV Table :b7, after b3, 21d
+    GUI Design: :b8, after b7, 7d
+    Extra Functions: b9, after b7, 14d
 
-The source code of the project is organized as follows:
-
-- `assets`: contains logo and images used.
-- `App.py`: entry point of the app, also where all the GUI menu elements and functions are defined.
- 
-
-## Tools Used
-
-We are also using the following tools:
-- `isort`: to order imports alphabetically, use with `isort .`
-- `black`: formatter, use with `black .`
-- `flake8`: linting tool, use with `flake8 .`
-
-
-## Requirements
-To generate requirement list use:
-`pip freeze > requirements.txt`
-
-### Install Requirements
-
-The requirements can be installed from the requirements.txt file:
-`pip install -r requirements.txt`
-
-### Verify Requirements
-`pip list`
-
-
-## To create Executable
-- List dependencies with `pip install -r requirements.txt`
-- `pip install pyinstaller`
-- `pyinstaller --onefile --noconsole --add-data "map.html;." --add-data "UserManual.pdf" --add-data "assets;assets" App.py`
-- The executable will be generated in the `dist` directory.
-
+    section Deployment
+    About button   :c1, 2024-11-13, 3d
+    Testing :c2, after c1, 4d
+    Create installer:c3, after c1, 5d
+    Manual  :c4, after c1, 6d
+```
 
 ## Code Structure
 For the conversion we use the following structure to transform from the Asterix Binary File to the csv file:
@@ -146,3 +133,45 @@ flowchart TD
     V44 --> |No| V46(Next Line)
     V46 --> Q
 ```
+
+## For Developers
+### First time installing Project
+1. Clone repo: `git clone https://github.com/Robertguarneros/AsterixProject.git`
+2. Change into the project directory 
+3. Install the dependencies: `pip install -r requirements.txt`
+4. Run proyect
+
+### Project Structure
+
+The source code of the project is organized as follows:
+
+- `assets`: contains logo and images used.
+- `App.py`: entry point of the app, also where all the GUI menu elements and functions are defined.
+ 
+
+### Tools Used
+
+We are also using the following tools:
+- `isort`: to order imports alphabetically, use with `isort .`
+- `black`: formatter, use with `black .`
+- `flake8`: linting tool, use with `flake8 .`
+
+
+### Requirements
+To generate requirement list use:
+`pip freeze > requirements.txt`
+
+#### Install Requirements
+
+The requirements can be installed from the requirements.txt file:
+`pip install -r requirements.txt`
+
+#### Verify Requirements
+`pip list`
+
+
+### To create Executable
+- List dependencies with `pip install -r requirements.txt`
+- `pip install pyinstaller`
+- `pyinstaller --onefile --noconsole --add-data "map.html;." --add-data "UserManual.pdf" --add-data "assets;assets" App.py`
+- The executable will be generated in the `dist` directory.
