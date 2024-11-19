@@ -5,6 +5,7 @@ import os
 import platform
 import re
 import sys
+import webbrowser
 
 import numpy as np
 from PyQt5.QtCore import Qt, QTimer, QUrl
@@ -2342,6 +2343,15 @@ class CSVTableDialog(QDialog):
         self.lon_min_input.clear()
         self.lon_max_input.clear()
 
+def resource_path(relative_path):
+    """Get the absolute path to a resource, considering PyInstaller's bundling."""
+    if hasattr(sys, '_MEIPASS'):
+        # Running as a bundled executable
+        return os.path.join(sys._MEIPASS, relative_path)
+    # Running as a script
+    return os.path.join(os.path.abspath("."), relative_path)
+
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -2382,14 +2392,14 @@ class MainWindow(QMainWindow):
 
         # Create submenu for help
         help_menu = main_menu.addMenu("Help")
-        help_menu.addAction("Manual")
+        help_menu.addAction("Manual",self.open_manual)
         help_menu.addAction("About", self.about_button)
 
         # Add map
         self.web_view = QWebEngineView()
 
         # Load the custom Leaflet map HTML file
-        html_path = os.path.join(os.path.dirname(__file__), "map.html")
+        html_path = resource_path("map.html")
         self.web_view.setUrl(QUrl.fromLocalFile(os.path.abspath(html_path)))
 
         # Timer for simulation
@@ -2503,6 +2513,15 @@ class MainWindow(QMainWindow):
         for i in range(self.control_layout.count()):
             self.control_layout.itemAt(i).widget().setVisible(False)
 
+    def open_manual(self):
+            pdf_path = resource_path("UserManual.pdf")
+            if os.path.exists(pdf_path):
+                webbrowser.open_new(pdf_path)
+            else:
+                QMessageBox.information(
+                    self,
+                    "File not Found", "The manual is not in the expected location."
+                )
 
     def undo_selection(self):
         self.distance_table.setVisible(False)
