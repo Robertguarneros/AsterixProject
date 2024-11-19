@@ -47,4 +47,80 @@ For the conversion we use the following structure to transform from the Asterix 
 ![alt text](GeneralFlow.png)
 
 For the decoding of each data item:
-[![](https://mermaid.ink/img/pako:eNqFl19vozgUxb-KxVNWSiv8B0LysKtuOrtbaVq1TSbSrvLiASexluDION1m0nz3dbAL2CCmDykB33NO4Me9cA5SkbFgFmxy8V-6o1KBr6_rAui_19GzFCkrS3BPFQUPiu1_sUfAzc2v4OX80DoEQhiCZ8lKVqjfLmbdS7Xu429Wgo_F6Mu7kjRVYHE3B7TIwOLB_KdZBpQA88UK5Lxg1mNxrV06Ok_iAyxdU0g6psva9AN8q02XfM-A2OjS04Dpt6p25QhdXVfeT0Ud11XLdQUbWyq3TIFXdhD6zN6zMpX8oIRsZ0jLt3aGFTQhkCNcpUBejO6PX6F2DlzneGS0PEqWgWdRCsVFAXiht3M6mASbJMTVrqIQL8qkG4W0o0RNFM0bwHemeMA8Muaxq1aZx575tGset80ntfkfX4csJ8YycTUqy8TjDnctk7bltLZ8pZk-y8-5UGCu7y-9i0leKp6WQ1GmJgoMXfEqCwzdMKgHR30ztoFsiLzjMpV0ozeyTF5v7iESoQmBPFGTwqMR9dAIHRwh7qZ4yPR6vuEpragcCmNphMQTN2k8IFHUk8YhEnpILsDj7z-FEloqYTyaCynZZ_Ec8A0o2LVbUnmqV8d29aRevcn5dqdAzt5Y3l9jIYSJrinemG4b5j6dCyEzXlClu-m1c-lWzUpOi_aBWiSxItNapHf9VehPppt8oSRPe5UsiCislfoLrFSmPXqFUGiF4EiT1yxNXQn_hKPPbojci6h3eHdkDLvNsIXfCjX0LfXnv-DpuP_Omv6XXaX6EljuEPFUNXd6p9-SUTeFgx1qsOu_JAP0IUsfij1pMx28tojCnvHg9EXUNMYVy0XK1WnQ3qKJEk_N2PstsmckIKdHoql3RRaKquPwGbA44tBTrCJgvzF2H0n0GmdCahrTVBwLfWfqqVweaNpMP4seRl6p8fKHcc9EwO40xgNeFjJMvFLj5VOW9Hg5lOFowMtShGOv1Hh5FMEeirBDEZ4MeFlkcAK8WmPmM9N3wRxmcMPMX4xv1a55tPl-AvjejtuhhxqLEAk9A_Nc4yEEe2YrcRAiLkKL9s8nFiGCvFLj5U_QHoSIgxBpetjPJhX5fHgjnpKxrohSO379YCCnpaqqG18HJxKdz1_eubr4h41YPHpi7_rFoW1vLvNLMA72TO4pz_Q7xvl6cB1oxz1bBzO9qc8YK9U6WBcXvZIelVicijSYKXlk40CK43YXzDY0L_W340G3aHbP6VbSfb2XZVw_Tz-al5jqXWYcHGjxjxD7Txn9NZidg_dgdjPRbym3MIxInEyicXAKZiiJbhGZTlCECZxM4-llHPyoipPbcJKQOEySGOEITaPL_9tx7V4?type=png)](https://mermaid.live/edit#pako:eNqFl19vozgUxb-KxVNWSiv8B0LysKtuOrtbaVq1TSbSrvLiASexluDION1m0nz3dbAL2CCmDykB33NO4Me9cA5SkbFgFmxy8V-6o1KBr6_rAui_19GzFCkrS3BPFQUPiu1_sUfAzc2v4OX80DoEQhiCZ8lKVqjfLmbdS7Xu429Wgo_F6Mu7kjRVYHE3B7TIwOLB_KdZBpQA88UK5Lxg1mNxrV06Ok_iAyxdU0g6psva9AN8q02XfM-A2OjS04Dpt6p25QhdXVfeT0Ud11XLdQUbWyq3TIFXdhD6zN6zMpX8oIRsZ0jLt3aGFTQhkCNcpUBejO6PX6F2DlzneGS0PEqWgWdRCsVFAXiht3M6mASbJMTVrqIQL8qkG4W0o0RNFM0bwHemeMA8Muaxq1aZx575tGset80ntfkfX4csJ8YycTUqy8TjDnctk7bltLZ8pZk-y8-5UGCu7y-9i0leKp6WQ1GmJgoMXfEqCwzdMKgHR30ztoFsiLzjMpV0ozeyTF5v7iESoQmBPFGTwqMR9dAIHRwh7qZ4yPR6vuEpragcCmNphMQTN2k8IFHUk8YhEnpILsDj7z-FEloqYTyaCynZZ_Ec8A0o2LVbUnmqV8d29aRevcn5dqdAzt5Y3l9jIYSJrinemG4b5j6dCyEzXlClu-m1c-lWzUpOi_aBWiSxItNapHf9VehPppt8oSRPe5UsiCislfoLrFSmPXqFUGiF4EiT1yxNXQn_hKPPbojci6h3eHdkDLvNsIXfCjX0LfXnv-DpuP_Omv6XXaX6EljuEPFUNXd6p9-SUTeFgx1qsOu_JAP0IUsfij1pMx28tojCnvHg9EXUNMYVy0XK1WnQ3qKJEk_N2PstsmckIKdHoql3RRaKquPwGbA44tBTrCJgvzF2H0n0GmdCahrTVBwLfWfqqVweaNpMP4seRl6p8fKHcc9EwO40xgNeFjJMvFLj5VOW9Hg5lOFowMtShGOv1Hh5FMEeirBDEZ4MeFlkcAK8WmPmM9N3wRxmcMPMX4xv1a55tPl-AvjejtuhhxqLEAk9A_Nc4yEEe2YrcRAiLkKL9s8nFiGCvFLj5U_QHoSIgxBpetjPJhX5fHgjnpKxrohSO379YCCnpaqqG18HJxKdz1_eubr4h41YPHpi7_rFoW1vLvNLMA72TO4pz_Q7xvl6cB1oxz1bBzO9qc8YK9U6WBcXvZIelVicijSYKXlk40CK43YXzDY0L_W340G3aHbP6VbSfb2XZVw_Tz-al5jqXWYcHGjxjxD7Txn9NZidg_dgdjPRbym3MIxInEyicXAKZiiJbhGZTlCECZxM4-llHPyoipPbcJKQOEySGOEITaPL_9tx7V4)
+```mermaid
+flowchart LR
+    R(Process Data Item)
+    R --> Q{Is Data Item 010 Present?}
+    Q --> |Yes |S(Extract SAC and SIC and add to CSV line)
+    S -->T
+    Q --> |No| T{Is Data Item 140 Present?}
+    T --> |Yes| U(Extract Time of Day and add to CSV line)
+    U --> V
+    T --> |No| V{Is Data Item 020 Present?}
+    V --> |Yes| V1(Extract Target Report Descriptor and add to csv line)
+    V1 --> V2
+    V --> |No| V2{Is Data Item 040 Present?}
+    V2 --> |Yes| V3(Extract Measured Posotion in Polar and add to csv line)
+    V3 --> V4
+    V2 --> |No| V4{Is Data Item 070 Present?}
+    V4 --> |Yes| V5(Extract Mode 3A Data and add to csv line)
+    V5 --> V6
+    V4 --> |No| V6{Is Data Item 090 Present?}
+    V6 --> |Yes| V7(Extract FL and add to csv line)
+    V7 --> V8
+    V6 --> |No| V8{Is Data Item 130 Present?}
+    V8 --> |Yes| V9(Extract Radar Plot Characteristics and add to csv line)
+    V9 --> V10
+    V8 --> |No| V10{Is Data Item 220 Present?}
+    V10 --> |Yes| V11(Extract Aircraft Address and add to csv line)
+    V11--> V12
+    V10 --> |No| V12{Is Data Item 240 Present?}
+    V12 --> |Yes| V13(Extract Aircraft Identification and add to csv line)
+    V13 --> V14
+    V12 --> |No| V14{Is Data Item 250 Present?}
+    V14 --> |Yes| V15(Extract Mode S MB Data and add to csv line)
+    V15 --> V16(Correct Mode C if necessary)
+    V16 --> V17(Correct flight level if necessary)
+    V17 --> V18(Convert Polar Coordinates to Cartesian Coordinates)
+    V18 --> V19(Convert Cartesian Coordinates to Geocentric Coordinates)
+    V19 --> V20(Convert Geocentric Coordinates to Geodesic Coordinates)
+    V20 --> V21(Add Geodesic coordinates to csv line)
+    V21 --> V22
+    V14 --> V22{Is Data Item 161 Present?}
+    V22 --> |Yes|V23(Extract Track Number and add data to csv line)
+    V23 --> V24
+    V22 --> |No|V24{Is Data Item 042 Present?}
+    V24 --> |Yes| V25(Extract Cartesian Coordinates and add to csv line)
+    V25 --> V26
+    V24 --> |No| V26{Is Data Item 200 Present?}
+    V26 --> |Yes| V27(Extract Velocity and add to csv line)
+    V27 --> V28
+    V26 --> |No| V28{Is Data Item 170 Present?}
+    V28 --> |Yes| V29(Extract Track Status and add to csv line)
+    V29 --> V30
+    V28 --> |No| V30{Is Data Item 210 Present?}
+    V30 --> |Yes| V31(Account for space)
+    V31 --> V32
+    V30 --> |No| V32{Is Data Item 030 Present?}
+    V32 --> |Yes| V33(Account for space)
+    V33 --> V34
+    V32 --> |No| V34{Is Data Item 080 Present?}
+    V34 --> |Yes| V35(Account for space)
+    V35 --> V36
+    V34 --> |No| V36{Is Data Item 100 Present?}
+    V36 --> |Yes| V37(Account for space)
+    V37 --> V38 
+    V36 --> |No| V38{Is Data Item 110 Present?}
+    V38 --> |Yes| V39(Extract Heigth Measured by 3D Radar and add to csv line)
+    V39 --> V40
+    V38 --> |No| V40{Is Data Item 120 Present?}
+    V40 --> |Yes| V41(Account for Space)
+    V41 --> V42
+    V40 --> |No| V42{Is Data Item 230 Present?}
+    V42 --> |Yes| V43(Extract Data and add to csv line)
+    V43 --> V44
+    V42 --> |No| V44{Is this the last line?}
+    V44 --> |Yes| V45{{Exit}}
+    V44 --> |No| V46(Next Line)
+    V46 --> Q
+```
