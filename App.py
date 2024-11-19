@@ -2429,7 +2429,7 @@ class MainWindow(QMainWindow):
         self.distance_table = QTableWidget()
         self.distance_table.setRowCount(3)
         self.distance_table.setColumnCount(5)  # Columns: TI, Latitude, Longitude, Altitude, Distance
-        self.distance_table.setHorizontalHeaderLabels(["TI", "Latitude", "Longitude", "Altitude", "Distance"])
+        self.distance_table.setHorizontalHeaderLabels(["TI", "Latitude (°)", "Longitude (°)", "Altitude (m)", "Distance (NM)"])
         self.distance_table.setVisible(False)  # Initially hidde
         self.distance_table.verticalHeader().setVisible(False)
 

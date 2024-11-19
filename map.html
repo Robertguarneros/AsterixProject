@@ -28,7 +28,7 @@
                 className: 'rotated-icon',  // Agregamos la clase para rotar
                 iconSize: [32, 32],         // Tamaño del ícono
                 iconAnchor: [16, 16],       // Punto de anclaje del ícono
-                popupAnchor: [16, 16]         // Punto desde el cual se abre el popup
+                popupAnchor: [4, 4]         // Punto desde el cual se abre el popup
             });
         }
 
@@ -36,7 +36,7 @@
 
         function addAircraft(latitude, longitude, ti, altitude, heading) {
             var marker = L.marker([latitude, longitude], { icon: createAirplaneIcon(heading) }).addTo(map);
-            marker.bindPopup("<b>" + ti + "</b><br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);
+            marker.bindPopup("<b>" + ti + "</b><br>Latitude: " + latitude + "°<br>Longitude: " + longitude + "°<br>Altitude: " + altitude + " m<br>Heading: " + heading + "°");
             marker.on('click', function () {
                 marker.openPopup();
             });
@@ -53,7 +53,7 @@
                 marker.setLatLng([latitude, longitude]);
                 // Update the marker's icon with the new heading
                 marker.setIcon(createAirplaneIcon(heading));
-                marker.bindPopup("<b>" + ti + "</b><br>Latitude: " + latitude + "<br>Longitude: " + longitude + "<br>Altitude: " + altitude + "<br>Heading: " + heading);
+                marker.bindPopup("<b>" + ti + "</b><br>Latitude: " + latitude + "°<br>Longitude: " + longitude + "°<br>Altitude: " + altitude + " m<br>Heading: " + heading + "°");
             } else {
                 // If the aircraft doesn't exist, add it
                 addAircraft(latitude, longitude, ti, altitude, heading);
@@ -77,11 +77,6 @@
                 map.removeLayer(marker);  // Elimina el marcador del mapa
                 delete aircraftMarkers[ti];  // Elimina el marcador del diccionario
             }
-        }
-
-        function calculateDistance(U1, V1, U2, V2) {
-            const distance = Math.sqrt((U1 - U2) ** 2 + (V1 - V2) ** 2) / 1852;
-            return distance;
         }
         
     </script>
