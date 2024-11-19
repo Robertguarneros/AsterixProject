@@ -1,4 +1,6 @@
 # AsterixProject
+To view the App Manual open the application and click on Help --> Manual
+
 ## Overview of Project
 We have developed the following planning:
 ```mermaid
@@ -176,5 +178,5 @@ The requirements can be installed from the requirements.txt file:
 ### To create Executable
 - List dependencies with `pip install -r requirements.txt`
 - `pip install pyinstaller`
-- `pyinstaller --onefile --noconsole --add-data "map.html;." --add-data "UserManual.pdf" --add-data "assets;assets" App.py`
+- `pyinstaller --onefile --noconsole --add-data "map.html;." --add-data "UserManual.pdf;." --add-data "assets;assets" App.py`
 - The executable will be generated in the `dist` directory.
