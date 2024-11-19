@@ -58,8 +58,9 @@ flowchart TD
     J --> D
     E --> E1(Extract FSPEC from first line)
     E1 --> K{Have we processed all lines?}
-    K --> |Yes| R(Decode Data Items)
-    R -->  X[View Data Item flow chart]
+    K --> |Yes| R(Decode All Data Items for all lines)
+    R -->  X{{View Data Item flow chart}}
+    X --> Z[Save All lines to csv file]
     K --> |No|L(Extract FSPEC from next line)
     L --> M(Parse FSPEC into Data Items)
     M --> N(Identify unused octects)
