@@ -1,6 +1,6 @@
 # AsterixProject
 ## Overview of Project
-We have developed the following planning
+We have developed the following planning:
 ```mermaid
 gantt
     title Planning
@@ -28,6 +28,9 @@ gantt
     Create installer:c3, after c1, 5d
     Manual  :c4, after c1, 6d
 ```
+The tasks have been divided among the group members as follows:
+![alt text](<Screenshot 2024-11-19 163259.png>)
+
 
 ## Code Structure
 For the conversion we use the following structure to transform from the Asterix Binary File to the csv file:
