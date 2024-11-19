@@ -38,6 +38,5 @@ The requirements can be installed from the requirements.txt file:
 ## To create Executable
 - List dependencies with `pip install -r requirements.txt`
 - `pip install pyinstaller`
-- `pyinstaller --onefile app.py`
+- `pyinstaller --onefile --noconsole --add-data "map.html;." --add-data "UserManual.pdf" --add-data "assets;assets" App.py`
 - The executable will be generated in the `dist` directory.
-- pyinstaller --onefile --noconsole --add-data "map.html;." --add-data "assets;assets" App.py
