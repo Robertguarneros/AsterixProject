@@ -44,7 +44,28 @@ The requirements can be installed from the requirements.txt file:
 
 ## Code Structure
 For the conversion we use the following structure to transform from the Asterix Binary File to the csv file:
-![alt text](GeneralFlow.png)
+```mermaid
+flowchart TD
+    A(Start) --> B(read_and_split_binary)
+    B --> C(Open binary file and read contents)
+    C --> D{End of file reached?}
+    D --> |Yes| E(Return list of lines)
+    D --> |No| F(Extract CAT and Length)
+    F --> G(Convert to ones and zeros)
+    G --> H(Calculate remaining length)
+    H --> I(Read remaining octets)
+    I --> J(Store line)
+    J --> D
+    E --> E1(Extract FSPEC from first line)
+    E1 --> K{Have we processed all lines?}
+    K --> |Yes| R(Decode Data Items)
+    R -->  X[View Data Item flow chart]
+    K --> |No|L(Extract FSPEC from next line)
+    L --> M(Parse FSPEC into Data Items)
+    M --> N(Identify unused octects)
+    N --> O(Return Data Items and unused octects)
+    O --> K
+```
 
 For the decoding of each data item:
 ```mermaid
