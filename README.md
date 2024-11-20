@@ -1,6 +1,8 @@
 # AsterixProject
 To view the App Manual open the application and click on Help --> Manual
+
 OR 
+
 [Click here to view the User Manual](https://github.com/Robertguarneros/AsterixProject/blob/main/UserManual.pdf)
 
 
