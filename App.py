@@ -9,7 +9,7 @@ import webbrowser
 
 import numpy as np
 from PyQt5.QtCore import Qt, QTimer, QUrl
-from PyQt5.QtGui import QIcon, QFont
+from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import (
     QAction,
@@ -1988,7 +1988,7 @@ class CSVTableDialog(QDialog):
 
     def initialize_simulation(self):
 
-         # Ventana de progreso
+        # Ventana de progreso
         self.progress_dialog = QProgressDialog(
             "Loading simulation data, please wait...", "Cancel", 0, 100, self
         )
@@ -2081,7 +2081,9 @@ class CSVTableDialog(QDialog):
                     self.last_known_time_for_aircraft[ti] = str(int(time) + 3)
 
                 # Actualizar la barra de progreso
-                progress = int((row_idx / total_rows) * 100)  # Calcular el progreso en porcentaje
+                progress = int(
+                    (row_idx / total_rows) * 100
+                )  # Calcular el progreso en porcentaje
                 self.progress_dialog.setValue(progress)
 
                 # Si el usuario cierra el diálogo, interrumpimos la simulación
@@ -2344,14 +2346,14 @@ class CSVTableDialog(QDialog):
         self.lon_min_input.clear()
         self.lon_max_input.clear()
 
+
 def resource_path(relative_path):
     """Get the absolute path to a resource, considering PyInstaller's bundling."""
-    if hasattr(sys, '_MEIPASS'):
+    if hasattr(sys, "_MEIPASS"):
         # Running as a bundled executable
         return os.path.join(sys._MEIPASS, relative_path)
     # Running as a script
     return os.path.join(os.path.abspath("."), relative_path)
-
 
 
 class MainWindow(QMainWindow):
@@ -2393,7 +2395,7 @@ class MainWindow(QMainWindow):
 
         # Create submenu for help
         help_menu = main_menu.addMenu("Help")
-        help_menu.addAction("Manual",self.open_manual)
+        help_menu.addAction("Manual", self.open_manual)
         help_menu.addAction("About", self.about_button)
 
         # Add map
@@ -2415,13 +2417,17 @@ class MainWindow(QMainWindow):
         self.distance_input = QHBoxLayout()
 
         # Label and input for Aircraft 1
-        self.distance_input.addWidget(QLabel("TI Aircraft 1:"))  # Label for TI Aircraft 1
+        self.distance_input.addWidget(
+            QLabel("TI Aircraft 1:")
+        )  # Label for TI Aircraft 1
         self.ti1_input = QLineEdit()  # Input field for TI Aircraft 1
         self.ti1_input.setPlaceholderText("Enter TI of Aircraft 1")
         self.distance_input.addWidget(self.ti1_input)
 
         # Label and input for Aircraft 2
-        self.distance_input.addWidget(QLabel("TI Aircraft 2:"))  # Label for TI Aircraft 2
+        self.distance_input.addWidget(
+            QLabel("TI Aircraft 2:")
+        )  # Label for TI Aircraft 2
         self.ti2_input = QLineEdit()  # Input field for TI Aircraft 2
         self.ti2_input.setPlaceholderText("Enter TI of Aircraft 2")
         self.distance_input.addWidget(self.ti2_input)
@@ -2429,7 +2435,9 @@ class MainWindow(QMainWindow):
         # Button to calculate the distance
         self.calculate_distance_button = QPushButton("Calculate Distance")
         self.calculate_distance_button.setFixedWidth(500)
-        self.calculate_distance_button.clicked.connect(self.calculate_distance_between_aircraft)
+        self.calculate_distance_button.clicked.connect(
+            self.calculate_distance_between_aircraft
+        )
         self.distance_input.addWidget(self.calculate_distance_button)
 
         self.distance_layout.addLayout(self.distance_input)
@@ -2439,13 +2447,19 @@ class MainWindow(QMainWindow):
         # Table for displaying distances
         self.distance_table = QTableWidget()
         self.distance_table.setRowCount(3)
-        self.distance_table.setColumnCount(5)  # Columns: TI, Latitude, Longitude, Altitude, Distance
-        self.distance_table.setHorizontalHeaderLabels(["TI", "Latitude (°)", "Longitude (°)", "Altitude (m)", "Distance (NM)"])
+        self.distance_table.setColumnCount(
+            5
+        )  # Columns: TI, Latitude, Longitude, Altitude, Distance
+        self.distance_table.setHorizontalHeaderLabels(
+            ["TI", "Latitude (°)", "Longitude (°)", "Altitude (m)", "Distance (NM)"]
+        )
         self.distance_table.setVisible(False)  # Initially hidde
         self.distance_table.verticalHeader().setVisible(False)
 
         row_height = self.distance_table.rowHeight(0)  # Get the height of one row
-        total_height = 3 * row_height - 7  # Calculate the total height based on the rows
+        total_height = (
+            3 * row_height - 7
+        )  # Calculate the total height based on the rows
         column_width = 160  # Definir un ancho común para todas las columnas
 
         header = self.distance_table.horizontalHeader()
@@ -2460,7 +2474,7 @@ class MainWindow(QMainWindow):
         for col in range(self.distance_table.columnCount()):
             self.distance_table.horizontalHeaderItem(col).setFont(header_font)
 
-        self.distance_layout.addWidget(self.distance_table)  
+        self.distance_layout.addWidget(self.distance_table)
 
         # Message labels below the table
         self.message_label1 = QLabel("")  # First message label
@@ -2482,14 +2496,16 @@ class MainWindow(QMainWindow):
         self.distance_layout.addWidget(self.undo_selection_button)
 
         layout.addLayout(self.distance_layout)
-        
+
         self.control_layout = QHBoxLayout()
 
         # Create a single button for Play/Pause functionality
         self.play_pause_button = QPushButton()
         self.play_pause_button.setText("Play")  # Set initial text to "Play"
         self.play_pause_button.clicked.connect(self.toggle_simulation)
-        self.control_layout.addWidget(self.play_pause_button)  # Add the button to the layout
+        self.control_layout.addWidget(
+            self.play_pause_button
+        )  # Add the button to the layout
 
         # Create a single button for Play/Pause functionality
         self.reset_button = QPushButton()
@@ -2515,14 +2531,13 @@ class MainWindow(QMainWindow):
             self.control_layout.itemAt(i).widget().setVisible(False)
 
     def open_manual(self):
-            pdf_path = resource_path("UserManual.pdf")
-            if os.path.exists(pdf_path):
-                webbrowser.open_new(pdf_path)
-            else:
-                QMessageBox.information(
-                    self,
-                    "File not Found", "The manual is not in the expected location."
-                )
+        pdf_path = resource_path("UserManual.pdf")
+        if os.path.exists(pdf_path):
+            webbrowser.open_new(pdf_path)
+        else:
+            QMessageBox.information(
+                self, "File not Found", "The manual is not in the expected location."
+            )
 
     def undo_selection(self):
         self.distance_table.setVisible(False)
@@ -2530,11 +2545,10 @@ class MainWindow(QMainWindow):
         self.selected_tis = {}
         self.ti1_input.clear()
         self.ti2_input.clear()
-        self.message_label1.setText("")  
+        self.message_label1.setText("")
         self.message_label1.setVisible(False)
-        self.message_label2.setText("")  
+        self.message_label2.setText("")
         self.message_label2.setVisible(False)
-
 
     def calculate_distance_between_aircraft(self):
         """Calculate the distance between two aircraft based on their TIs."""
@@ -2548,13 +2562,17 @@ class MainWindow(QMainWindow):
 
         # Ensure the TIs are not the same
         if ti1 == ti2:
-            QMessageBox.warning(self, "Input Error", "Please enter two different aircrafts.")
+            QMessageBox.warning(
+                self, "Input Error", "Please enter two different aircrafts."
+            )
             return
 
         # Verify that both TIs exist in the data
         if ti1 not in self.aircraft_list or ti2 not in self.aircraft_list:
-            QMessageBox.warning(self, "Input Error", "One or both TIs do not exist in the data.")
-            return 
+            QMessageBox.warning(
+                self, "Input Error", "One or both TIs do not exist in the data."
+            )
+            return
 
         self.selected_tis = (ti1, ti2)
 
@@ -2566,7 +2584,7 @@ class MainWindow(QMainWindow):
         aircraft2_data = self.update_aircraft_positions_before_current_time(ti2)
 
         # Prepare the table to display results
-        self.distance_table.setRowCount(2)  
+        self.distance_table.setRowCount(2)
         self.distance_table.setVisible(True)
         self.undo_selection_button.setVisible(True)
 
@@ -2583,12 +2601,15 @@ class MainWindow(QMainWindow):
 
         # Update the distance column (a single cell spanning both rows)
         self.update_distance_cell(distance)
-        
 
     def update_table_row(self, row, ti, aircraft_data):
         """Helper function to update a row in the distance table."""
         if aircraft_data:
-            lat, lon, alt = aircraft_data["lat"], aircraft_data["lon"], aircraft_data["h"]
+            lat, lon, alt = (
+                aircraft_data["lat"],
+                aircraft_data["lon"],
+                aircraft_data["h"],
+            )
         else:
             lat, lon, alt = "N/A", "N/A", "N/A"
 
@@ -2604,24 +2625,24 @@ class MainWindow(QMainWindow):
             item.setTextAlignment(Qt.AlignCenter)  # Center-align text
             item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
 
-
     def update_distance_cell(self, distance):
         """Update the combined cell for distance in the table."""
-        self.distance_table.setSpan(0, 4, 2, 1)  # Merge the cell in column 4 for both rows
+        self.distance_table.setSpan(
+            0, 4, 2, 1
+        )  # Merge the cell in column 4 for both rows
         distance_text = f"{distance:.2f}" if distance is not None else "N/A"
-        
+
         # Create the table widget item
         distance_item = QTableWidgetItem(distance_text)
         distance_item.setTextAlignment(Qt.AlignCenter)
         distance_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
-        
+
         font = QFont()
-        font.setPointSize(12)  
+        font.setPointSize(12)
         distance_item.setFont(font)
-        
+
         # Set the item in the table
         self.distance_table.setItem(0, 4, distance_item)
-
 
     def show_simulation_buttons(self):
         """Shows the Play/Pause button once the simulation is initialized."""
@@ -2660,9 +2681,9 @@ class MainWindow(QMainWindow):
                         break
             if last_position is not None:
                 break
-                
+
         last_known_time = int(self.last_known_time_for_aircraft.get(aircraft, -1))
-        
+
         if last_position and self.current_time <= last_known_time:
             self.update_aircraft_on_map(aircraft, last_position)
             return last_position
@@ -2779,14 +2800,18 @@ class MainWindow(QMainWindow):
             aircraft2_data = self.update_aircraft_positions_before_current_time(ti2)
 
             if aircraft1_data:
-                self.message_label1.setText("")  # Clear the message if everything is fine
+                self.message_label1.setText(
+                    ""
+                )  # Clear the message if everything is fine
                 self.message_label1.setVisible(False)
             else:
                 self.message_label1.setText(f"Aircraft {ti1} is out of bounds.")
                 self.message_label1.setVisible(True)
 
             if aircraft2_data:
-                self.message_label2.setText("")  # Clear the message if everything is fine
+                self.message_label2.setText(
+                    ""
+                )  # Clear the message if everything is fine
                 self.message_label2.setVisible(False)
             else:
                 self.message_label2.setText(f"Aircraft {ti2} is out of bounds.")
@@ -2805,8 +2830,8 @@ class MainWindow(QMainWindow):
             if current_time_str in self.aircraft_data_by_time:
                 aircraft_list = self.aircraft_data_by_time[current_time_str]
                 for aircraft in aircraft_list:
-                        ti = aircraft["ti"]
-                        self.update_aircraft_on_map(ti, aircraft)
+                    ti = aircraft["ti"]
+                    self.update_aircraft_on_map(ti, aircraft)
 
                 for aircraft in self.aircraft_list:
                     # Check if the aircraft is not in the current_time_str
@@ -2831,7 +2856,6 @@ class MainWindow(QMainWindow):
             interval = int(1000 / self.selected_speed)
             self.timer.start(interval)
 
-
     def update_aircraft_on_map(self, ti, aircraft_data):
         """Helper function to update a specific aircraft on the map."""
         try:
@@ -2844,12 +2868,11 @@ class MainWindow(QMainWindow):
                 f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});"
             )
         except Exception as e:
-                        print(f"Error updating aircraft: {e}")
+            print(f"Error updating aircraft: {e}")
 
-        
     def calculate_dynamic_distance(self, aircraft1_data, aircraft2_data):
         """Calculate the 3D distance between two aircraft."""
-        distance =  None
+        distance = None
         if aircraft1_data and aircraft2_data:
             u1, v1 = aircraft1_data["U"], aircraft1_data["V"]
             u2, v2 = aircraft2_data["U"], aircraft2_data["V"]

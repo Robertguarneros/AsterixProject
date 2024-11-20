@@ -1,12 +1,152 @@
 # AsterixProject
+To view the App Manual open the application and click on Help --> Manual
 
-## First time installing Project
+## Overview of Project
+We have developed the following planning:
+```mermaid
+gantt
+    title Planning
+    dateFormat  DD-MM-YYYY
+
+    section Planning
+    Understanding the Project :a1, 2024-09-23, 3d
+    Select tools (Github, Python)   :a2, after a1, 2d
+    Create project plan   :a3, after a2, 2d
+
+    section Development
+    Create repository   :b1, 2024-09-30, 1d
+    Create blank project :b2, after b1, 1d
+    Decode Data Items Individually  :b3, after b2, 7d
+    Combine Data Items into a single function :b4, after b3, 7d
+    Decode button :b5, after b3, 14d
+    Simulation :b6, after b3, 21d
+    CSV Table :b7, after b3, 21d
+    GUI Design: :b8, after b7, 7d
+    Extra Functions: b9, after b7, 14d
+
+    section Deployment
+    About button   :c1, 2024-11-13, 3d
+    Testing :c2, after c1, 4d
+    Create installer:c3, after c1, 5d
+    Manual  :c4, after c1, 6d
+```
+The tasks have been divided among the group members as follows:
+![alt text](<Screenshot 2024-11-19 163259.png>)
+
+
+## Code Structure
+For the conversion we use the following structure to transform from the Asterix Binary File to the csv file:
+```mermaid
+flowchart TD
+    A(Start) --> B(read_and_split_binary)
+    B --> C(Open binary file and read contents)
+    C --> D{End of file reached?}
+    D --> |Yes| E(Return list of lines)
+    D --> |No| F(Extract CAT and Length)
+    F --> G(Convert to ones and zeros)
+    G --> H(Calculate remaining length)
+    H --> I(Read remaining octets)
+    I --> J(Store line)
+    J --> D
+    E --> E1(Extract FSPEC from first line)
+    E1 --> K{Have we processed all lines?}
+    K --> |Yes| R(Decode All Data Items for all lines)
+    R -->  X{{View Data Item flow chart}}
+    X --> Z[Save All lines to csv file]
+    K --> |No|L(Extract FSPEC from next line)
+    L --> M(Parse FSPEC into Data Items)
+    M --> N(Identify unused octects)
+    N --> O(Return Data Items and unused octects)
+    O --> K
+```
+
+For the decoding of each data item:
+```mermaid
+flowchart TD
+    R(Process Data Item)
+    R --> Q{Is Data Item 010 Present?}
+    Q --> |Yes |S(Extract SAC and SIC and add to CSV line)
+    S -->T
+    Q --> |No| T{Is Data Item 140 Present?}
+    T --> |Yes| U(Extract Time of Day and add to CSV line)
+    U --> V
+    T --> |No| V{Is Data Item 020 Present?}
+    V --> |Yes| V1(Extract Target Report Descriptor and add to csv line)
+    V1 --> V2
+    V --> |No| V2{Is Data Item 040 Present?}
+    V2 --> |Yes| V3(Extract Measured Posotion in Polar and add to csv line)
+    V3 --> V4
+    V2 --> |No| V4{Is Data Item 070 Present?}
+    V4 --> |Yes| V5(Extract Mode 3A Data and add to csv line)
+    V5 --> V6
+    V4 --> |No| V6{Is Data Item 090 Present?}
+    V6 --> |Yes| V7(Extract FL and add to csv line)
+    V7 --> V8
+    V6 --> |No| V8{Is Data Item 130 Present?}
+    V8 --> |Yes| V9(Extract Radar Plot Characteristics and add to csv line)
+    V9 --> V10
+    V8 --> |No| V10{Is Data Item 220 Present?}
+    V10 --> |Yes| V11(Extract Aircraft Address and add to csv line)
+    V11--> V12
+    V10 --> |No| V12{Is Data Item 240 Present?}
+    V12 --> |Yes| V13(Extract Aircraft Identification and add to csv line)
+    V13 --> V14
+    V12 --> |No| V14{Is Data Item 250 Present?}
+    V14 --> |Yes| V15(Extract Mode S MB Data and add to csv line)
+    V15 --> V16(Correct Mode C if necessary)
+    V16 --> V17(Correct flight level if necessary)
+    V17 --> V18(Convert Polar Coordinates to Cartesian Coordinates)
+    V18 --> V19(Convert Cartesian Coordinates to Geocentric Coordinates)
+    V19 --> V20(Convert Geocentric Coordinates to Geodesic Coordinates)
+    V20 --> V21(Add Geodesic coordinates to csv line)
+    V21 --> V22
+    V14 --> V22{Is Data Item 161 Present?}
+    V22 --> |Yes|V23(Extract Track Number and add data to csv line)
+    V23 --> V24
+    V22 --> |No|V24{Is Data Item 042 Present?}
+    V24 --> |Yes| V25(Extract Cartesian Coordinates and add to csv line)
+    V25 --> V26
+    V24 --> |No| V26{Is Data Item 200 Present?}
+    V26 --> |Yes| V27(Extract Velocity and add to csv line)
+    V27 --> V28
+    V26 --> |No| V28{Is Data Item 170 Present?}
+    V28 --> |Yes| V29(Extract Track Status and add to csv line)
+    V29 --> V30
+    V28 --> |No| V30{Is Data Item 210 Present?}
+    V30 --> |Yes| V31(Account for space)
+    V31 --> V32
+    V30 --> |No| V32{Is Data Item 030 Present?}
+    V32 --> |Yes| V33(Account for space)
+    V33 --> V34
+    V32 --> |No| V34{Is Data Item 080 Present?}
+    V34 --> |Yes| V35(Account for space)
+    V35 --> V36
+    V34 --> |No| V36{Is Data Item 100 Present?}
+    V36 --> |Yes| V37(Account for space)
+    V37 --> V38 
+    V36 --> |No| V38{Is Data Item 110 Present?}
+    V38 --> |Yes| V39(Extract Heigth Measured by 3D Radar and add to csv line)
+    V39 --> V40
+    V38 --> |No| V40{Is Data Item 120 Present?}
+    V40 --> |Yes| V41(Account for Space)
+    V41 --> V42
+    V40 --> |No| V42{Is Data Item 230 Present?}
+    V42 --> |Yes| V43(Extract Data and add to csv line)
+    V43 --> V44
+    V42 --> |No| V44{Is this the last line?}
+    V44 --> |Yes| V45{{Exit}}
+    V44 --> |No| V46(Next Line)
+    V46 --> Q
+```
+
+## For Developers
+### First time installing Project
 1. Clone repo: `git clone https://github.com/Robertguarneros/AsterixProject.git`
 2. Change into the project directory 
 3. Install the dependencies: `pip install -r requirements.txt`
 4. Run proyect
 
-## Project Structure
+### Project Structure
 
 The source code of the project is organized as follows:
 
@@ -14,7 +154,7 @@ The source code of the project is organized as follows:
 - `App.py`: entry point of the app, also where all the GUI menu elements and functions are defined.
  
 
-## Tools Used
+### Tools Used
 
 We are also using the following tools:
 - `isort`: to order imports alphabetically, use with `isort .`
@@ -22,21 +162,21 @@ We are also using the following tools:
 - `flake8`: linting tool, use with `flake8 .`
 
 
-## Requirements
+### Requirements
 To generate requirement list use:
 `pip freeze > requirements.txt`
 
-### Install Requirements
+#### Install Requirements
 
 The requirements can be installed from the requirements.txt file:
 `pip install -r requirements.txt`
 
-### Verify Requirements
+#### Verify Requirements
 `pip list`
 
 
-## To create Executable
+### To create Executable
 - List dependencies with `pip install -r requirements.txt`
 - `pip install pyinstaller`
-- `pyinstaller --onefile --noconsole --add-data "map.html;." --add-data "UserManual.pdf" --add-data "assets;assets" App.py`
+- `pyinstaller --onefile --noconsole --add-data "map.html;." --add-data "UserManual.pdf;." --add-data "assets;assets" App.py`
 - The executable will be generated in the `dist` directory.
