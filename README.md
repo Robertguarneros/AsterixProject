@@ -62,7 +62,7 @@ flowchart TD
 
 A function to extract the data corresponding to a Data Item was made for each Data Item. They take the Octets of information correspoding to the length of that specific data item as input and as an output have the corresponding data, SAC, SIC, Time of Day, etc. 
 
-So after we have the FSPECS, we start decoding each Data Item.If a specific Data Item is present according to the FSPEC, then we call the correspoding function and extract the data. This is the overall logic:
+So after we have the FSPECS, we start decoding each Data Item. If a specific Data Item is present according to the FSPEC, then we call the correspoding function and extract the data. This is the overall logic:
 
 ```mermaid
 flowchart TD
@@ -141,6 +141,7 @@ flowchart TD
     V44 --> |No| V46(Next Line)
     V46 --> Q
 ```
+Finally, all lines are saved to the csv file.
 
 ## For Developers
 ### First time installing Project
