@@ -196,4 +196,4 @@ The requirements can be installed from the requirements.txt file:
 
 
 ## User Manual
-[embed][https://github.com/Robertguarneros/AsterixProject/](https://github.com/Robertguarneros/AsterixProject/blob/main/UserManual.pdf)[/embed]
+[embed]https://github.com/Robertguarneros/AsterixProject/blob/main/UserManual.pdf[/embed]
