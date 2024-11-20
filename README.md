@@ -193,3 +193,7 @@ The requirements can be installed from the requirements.txt file:
 - `pip install pyinstaller`
 - `pyinstaller --onefile --noconsole --add-data "map.html;." --add-data "UserManual.pdf;." --add-data "assets;assets" App.py`
 - The executable will be generated in the `dist` directory.
+
+
+## User Manual
+[embed][https://github.com/Robertguarneros/AsterixProject/](https://github.com/Robertguarneros/AsterixProject/blob/main/UserManual.pdf)[/embed]
