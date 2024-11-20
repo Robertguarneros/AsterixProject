@@ -35,7 +35,7 @@ The tasks have been divided among the group members as follows:
 
 
 ## Code Structure
-For the decoding of each data item we have created a function that decodes the bits of each Data Item according to CAT 048. Each function is then called if the FSPEC bit corresponding to it is set to 1, indicating that there is information from this Data Item. This is all done in the function `convert_to_csv`. First we convert the Asterix Binary to 1s and 0s and separate each message into a line.Then we get the FSPEC structure of said function as it can be seen below:
+For the decoding of each data item we have created a function that decodes the bits of each Data Item according to CAT 048. Each function is then called if the FSPEC bit corresponding to it is set to 1, indicating that there is information from this Data Item. This is all done in the function `convert_to_csv`. First we convert the Asterix Binary to 1s and 0s and separate each message into a line. Then we get the FSPEC structure of said function as it can be seen below:
 ```mermaid
 flowchart TD
     A(Start) --> B(read_and_split_binary)
