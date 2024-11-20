@@ -1,5 +1,8 @@
 # AsterixProject
 To view the App Manual open the application and click on Help --> Manual
+OR 
+[Click here to view the User Manual](https://github.com/Robertguarneros/AsterixProject/blob/main/UserManual.pdf)
+
 
 ## Overview of Project
 We have developed the following planning:
@@ -193,7 +196,3 @@ The requirements can be installed from the requirements.txt file:
 - `pip install pyinstaller`
 - `pyinstaller --onefile --noconsole --add-data "map.html;." --add-data "UserManual.pdf;." --add-data "assets;assets" App.py`
 - The executable will be generated in the `dist` directory.
-
-
-## User Manual
-https://github.com/Robertguarneros/AsterixProject/blob/main/UserManual.pdf
