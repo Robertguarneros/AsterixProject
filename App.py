@@ -2200,20 +2200,13 @@ class CSVTableDialog(QDialog):
         detection_type_col_idx = 8  # Índice de la columna de tipo de detección
         for row in range(self.table_widget.rowCount()):
             if row in self.currently_visible_rows:
-                detection_type = self.table_widget.item(
-                    row, detection_type_col_idx
-                ).text()
+                detection_type = self.table_widget.item(row, detection_type_col_idx).text()
                 # Si "ModeS" no está en el tipo de detección, se oculta la fila
                 if "ModeS" not in detection_type:
                     self.table_widget.setRowHidden(row, True)  # Ocultar fila
                     self.other_filters_hidden_rows.add(
                         row
                     )  # Añadir a las filas ocultas
-                else:
-                    self.table_widget.setRowHidden(row, False)  # Mostrar fila
-                    self.other_filters_hidden_rows.discard(
-                        row
-                    )  # Eliminar de las filas ocultas
 
         # Después de aplicar el filtro, actualizamos la visibilidad de las filas
         self.update_row_visibility()
@@ -2223,28 +2216,23 @@ class CSVTableDialog(QDialog):
             transponder_value = self.table_widget.item(row, 23).text()
             if transponder_value == "7777":
                 self.other_filters_hidden_rows.add(row)
-            else:
-                self.other_filters_hidden_rows.discard(row)
 
+        # Después de aplicar el filtro, actualizamos la visibilidad de las filas
         self.update_row_visibility()
 
     def filter_on_ground(self):
-        ground_status_col_idx = 70
-        filter_texts = [
-            "No alert, no SPI, aircraft on ground",
-            "N/A",
-            "Not assigned",
-            "Alert, no SPI, aircraft on ground",
-            "Unknow",
-        ]
-
+        detection_type_col_idx = 70  # Índice de la columna del estado del vuelo
         for row in range(self.table_widget.rowCount()):
-            item = self.table_widget.item(row, ground_status_col_idx)
-            if item and item.text() in filter_texts:
-                self.other_filters_hidden_rows.add(row)
-            else:
-                self.other_filters_hidden_rows.discard(row)
+            if row in self.currently_visible_rows:
+                detection_type = self.table_widget.item(row, detection_type_col_idx).text()
+                # Si "airborne" no está en el estado del vuelo, se oculta la fila
+                if "airborne" not in detection_type:
+                    self.table_widget.setRowHidden(row, True)  # Ocultar fila
+                    self.other_filters_hidden_rows.add(
+                        row
+                    )  # Añadir a las filas ocultas
 
+        # Después de aplicar el filtro, actualizamos la visibilidad de las filas
         self.update_row_visibility()
 
     def update_row_visibility(self):
