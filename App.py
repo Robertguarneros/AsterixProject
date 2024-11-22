@@ -2935,7 +2935,7 @@ class MainWindow(QMainWindow):
             self,
             "About Asterix Decoder",
             "Asterix Decoder is a tool to convert, visualize and simulate ASTERIX data.\n\n"
-            "Created by Group 8:\n\nRoberto Guarneros\nAngela Nuñez\nDavid Garcia\n\n"
+            "Created by Group 8:\n\nRoberto Guarneros\nAngela Nuñez\nDavid Gracia\n\n"
             "Version: 1.1\n",
         )
 
