@@ -37,7 +37,7 @@ gantt
 ```
 The tasks have been divided among the group members as follows:
 ![alt text](<Screenshot 2024-11-19 163259.png>)
-
+More information about the tasks done by each group member [Here](https://github.com/users/Robertguarneros/projects/4/views/1)
 
 ## Code Structure
 For the decoding of each data item we have created a function that decodes the bits of each Data Item according to CAT 048. This is all done in the function `convert_to_csv`. First we convert the Asterix Binary to 1s and 0s and separate each message into a line. Then we get the FSPEC structure of each line as it can be seen below:
