@@ -2009,7 +2009,7 @@ class CSVTableDialog(QDialog):
         lon_idx = headers.index("LON")
         ti_idx = headers.index("TI")
         h_idx = headers.index("H")
-        modeC_idx = headers.index("MODE C corrected")
+        modeC_idx = headers.index("MODE C Corrected")
         fl_idx = headers.index("FL")
         heading_idx = headers.index("HEADING")
 
