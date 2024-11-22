@@ -1168,7 +1168,7 @@ def calculate_distance(U1, V1, U2, V2):
 def convert_to_csv(input_file, output_file, progress_dialog):
     lines = read_and_split_binary(input_file)
     csv_lines = []
-    new_csv_line = "NUM;SAC;SIC;TIME;TIME(s);LAT;LON;H;TYP_020;SIM_020;RDP_020;SPI_020;RAB_020;TST_020;ERR_020;XPP_020;ME_020;MI_020;FOE_FRI_020;RHO;THETA;V_070;G_070;MODE 3/A;V_090;G_090;FL;MODE C Corrected Altitude;SRL_130;SSR_130;SAM_130;PRL_130;PAM_130;RPD_130;APD_130;TA;TI;MCP_ALT;FMS_ALT;BP;VNAV;ALT_HOLD;APP;TARGET_ALT_SOURCE;RA;TTA;GS;TAR;TAS;HDG;IAS;MACH;BAR;IVV;TN;X;Y;GS_KT;HEADING;CNF_170;RAD_170;DOU_170;MAH_170;CDM_170;TRE_170;GHO_170;SUP_170;TCC_170;HEIGHT;COM_230;STAT_230;SI_230;MSCC_230;ARC_230;AIC_230;B1A_230;B1B_230"
+    new_csv_line = "NUM;SAC;SIC;TIME;TIME(s);LAT;LON;H;TYP_020;SIM_020;RDP_020;SPI_020;RAB_020;TST_020;ERR_020;XPP_020;ME_020;MI_020;FOE_FRI_020;RHO;THETA;V_070;G_070;MODE 3/A;V_090;G_090;FL;MODE C Corrected;SRL_130;SSR_130;SAM_130;PRL_130;PAM_130;RPD_130;APD_130;TA;TI;MCP_ALT;FMS_ALT;BP;VNAV;ALT_HOLD;APP;TARGET_ALT_SOURCE;RA;TTA;GS;TAR;TAS;HDG;IAS;MACH;BAR;IVV;TN;X;Y;GS_KT;HEADING;CNF_170;RAD_170;DOU_170;MAH_170;CDM_170;TRE_170;GHO_170;SUP_170;TCC_170;HEIGHT;COM_230;STAT_230;SI_230;MSCC_230;ARC_230;AIC_230;B1A_230;B1B_230"
     csv_lines.append(new_csv_line)
     i = 1
     for line in lines:
@@ -2009,6 +2009,8 @@ class CSVTableDialog(QDialog):
         lon_idx = headers.index("LON")
         ti_idx = headers.index("TI")
         h_idx = headers.index("H")
+        modeC_idx = headers.index("MODE C corrected")
+        fl_idx = headers.index("FL")
         heading_idx = headers.index("HEADING")
 
         # Dictionary to store aircraft data
@@ -2046,8 +2048,9 @@ class CSVTableDialog(QDialog):
                     "lat": float(row_data[lat_idx].replace(",", ".")),
                     "lon": float(row_data[lon_idx].replace(",", ".")),
                     "ti": row_data[ti_idx],
-                    "h": float(row_data[h_idx].replace(",", ".")),
-                    "heading": float(row_data[heading_idx].replace(",", ".")),
+                    "modeC": float(row_data[modeC_idx].replace(",", ".")) if row_data[modeC_idx].strip() else "null",
+                    "fl": float(row_data[fl_idx].replace(",", ".")) if row_data[fl_idx] != "N/A" else "N/A",
+                    "heading": float(row_data[heading_idx].replace(",", ".")) if row_data[heading_idx] != "N/A" else "N/A",
                     "U": float(stereographical_coords["U"]),
                     "V": float(stereographical_coords["V"]),
                 }
@@ -2056,8 +2059,8 @@ class CSVTableDialog(QDialog):
                 ti = aircraft_info["ti"]
                 lat = aircraft_info["lat"]
                 lon = aircraft_info["lon"]
-                h = aircraft_info["h"]
                 heading = aircraft_info["heading"]
+                fl = aircraft_info["fl"]
 
                 # Verificar que todos los campos sean diferentes de "N/A"
                 if (
@@ -2065,8 +2068,8 @@ class CSVTableDialog(QDialog):
                     and time != "N/A"
                     and lat != "N/A"
                     and lon != "N/A"
-                    and h != "N/A"
                     and heading != "N/A"
+                    and fl != "N/A"
                 ):
 
                     # Agregar los aviones al grupo de datos por tiempo
@@ -2435,11 +2438,9 @@ class MainWindow(QMainWindow):
         # Table for displaying distances
         self.distance_table = QTableWidget()
         self.distance_table.setRowCount(3)
-        self.distance_table.setColumnCount(
-            5
-        )  # Columns: TI, Latitude, Longitude, Altitude, Distance
+        self.distance_table.setColumnCount(6)  # Columns: TI, Latitude, Longitude, Flight Level, Mode C corrected altitude, Distance
         self.distance_table.setHorizontalHeaderLabels(
-            ["TI", "Latitude (°)", "Longitude (°)", "Altitude (m)", "Distance (NM)"]
+            ["TI", "Latitude (°)", "Longitude (°)", "Flight Level", "Mode C corrected altitude (ft)", "Distance (NM)"]
         )
         self.distance_table.setVisible(False)  # Initially hidde
         self.distance_table.verticalHeader().setVisible(False)
@@ -2593,22 +2594,27 @@ class MainWindow(QMainWindow):
     def update_table_row(self, row, ti, aircraft_data):
         """Helper function to update a row in the distance table."""
         if aircraft_data:
-            lat, lon, alt = (
+            lat, lon, fl, modeC = (
                 aircraft_data["lat"],
                 aircraft_data["lon"],
-                aircraft_data["h"],
+                aircraft_data["fl"],
+                aircraft_data["modeC"],
             )
         else:
-            lat, lon, alt = "N/A", "N/A", "N/A"
+            lat, lon, fl, modeC = "N/A", "N/A", "N/A", "N/A"
+        
+        if modeC == "null":
+            modeC = ""
 
         # Update the cells in the row
         self.distance_table.setItem(row, 0, QTableWidgetItem(ti))
         self.distance_table.setItem(row, 1, QTableWidgetItem(str(lat)))
         self.distance_table.setItem(row, 2, QTableWidgetItem(str(lon)))
-        self.distance_table.setItem(row, 3, QTableWidgetItem(str(alt)))
+        self.distance_table.setItem(row, 3, QTableWidgetItem(str(fl)))
+        self.distance_table.setItem(row, 4, QTableWidgetItem(str(modeC)))
 
         # Ensure the cells are read-only
-        for col in range(4):
+        for col in range(5):
             item = self.distance_table.item(row, col)
             item.setTextAlignment(Qt.AlignCenter)  # Center-align text
             item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
@@ -2616,7 +2622,7 @@ class MainWindow(QMainWindow):
     def update_distance_cell(self, distance):
         """Update the combined cell for distance in the table."""
         self.distance_table.setSpan(
-            0, 4, 2, 1
+            0, 5, 2, 1
         )  # Merge the cell in column 4 for both rows
         distance_text = f"{distance:.2f}" if distance is not None else "N/A"
 
@@ -2630,7 +2636,7 @@ class MainWindow(QMainWindow):
         distance_item.setFont(font)
 
         # Set the item in the table
-        self.distance_table.setItem(0, 4, distance_item)
+        self.distance_table.setItem(0, 5, distance_item)
 
     def show_simulation_buttons(self):
         """Shows the Play/Pause button once the simulation is initialized."""
@@ -2849,11 +2855,12 @@ class MainWindow(QMainWindow):
         try:
             latitude = aircraft_data["lat"]
             longitude = aircraft_data["lon"]
-            altitude = aircraft_data["h"]
+            modeC = aircraft_data["modeC"]
+            fl = aircraft_data["fl"]
             heading = aircraft_data["heading"]
 
             self.web_view.page().runJavaScript(
-                f"updateAircraft('{ti}', {latitude}, {longitude}, {altitude}, {heading});"
+                f"updateAircraft('{ti}', {latitude}, {longitude}, {modeC}, {fl}, {heading});"
             )
         except Exception as e:
             print(f"Error updating aircraft: {e}")
