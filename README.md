@@ -148,6 +148,9 @@ flowchart TD
 ```
 Finally, all lines are saved to the csv file.
 
+## Project Assessment
+Overall, we found the project to be both interesting and rewarding. It presented a challenge that was demanding yet achievable, pushing us to explore and grow. This project deepened our understanding of the Asterix notation and gave us the opportunity to be creative in designing algorithms and solutions for decoding binary data. It also enhanced our programming skills and encouraged us to think critically about presenting data in an engaging and user-friendly manner. In summary, we believe this project was an excellent opportunity to learn, innovate, and expand our knowledge.
+
 ## For Developers
 ### First time installing Project
 1. Clone repo: `git clone https://github.com/Robertguarneros/AsterixProject.git`
