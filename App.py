@@ -2204,8 +2204,9 @@ class CSVTableDialog(QDialog):
         for row in range(self.table_widget.rowCount()):
             if row in self.currently_visible_rows:
                 detection_type = self.table_widget.item(row, detection_type_col_idx).text()
-                # Si "ModeS" no está en el tipo de detección, se oculta la fila
-                if "ModeS" not in detection_type:
+                #variant = {"ModeS", "Mode S"}
+                # Si no se encuentra ninguna variación de "ModeS", se oculta la fila
+                if not any(variant in detection_type for variant in ["ModeS", "Mode S"]):
                     self.table_widget.setRowHidden(row, True)  # Ocultar fila
                     self.other_filters_hidden_rows.add(
                         row
@@ -2213,6 +2214,7 @@ class CSVTableDialog(QDialog):
 
         # Después de aplicar el filtro, actualizamos la visibilidad de las filas
         self.update_row_visibility()
+
 
     def filter_fixed_transponder(self):
         for row in range(self.table_widget.rowCount()):
